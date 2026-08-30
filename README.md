@@ -46,9 +46,14 @@ If your sheet is private, make sure it is shared so the URL can be accessed.
 
 ## Enable write-back to Google Sheet
 
-To make checkbox toggles update your sheet:
+To make checkbox toggles update your sheet, you need to create a Google Apps Script webhook. Here's how:
 
-1. Create an Apps Script project and paste:
+### Step 1: Create a new Apps Script project
+
+1. Open [script.google.com](https://script.google.com)
+2. Click **+ New project**
+3. Name it something like "Perkz Webhook"
+4. Replace the default code with this:
 
 ```javascript
 function doPost(e) {
@@ -71,6 +76,27 @@ function doPost(e) {
 }
 ```
 
-2. Deploy as **Web app** (execute as you, access: anyone with link).
-3. Copy the web app URL.
-4. In app **Settings**, paste it into **Update webhook URL (Apps Script)** and save settings.
+### Step 2: Deploy as Web App
+
+1. Click **Deploy** (top right)
+2. Select **New deployment**
+3. Click the gear icon and select **Web app**
+4. Set:
+   - **Execute as**: Your email/account
+   - **Who has access**: Anyone with the link
+5. Click **Deploy**
+6. Click **Authorize access** and allow the script to access your sheets
+7. Copy the deployment URL (it will be shown in a dialog)
+
+### Step 3: Add webhook URL to Perkz app
+
+1. Open the Perkz app
+2. Go to **Settings** tab
+3. Paste the webhook URL into **"Update webhook URL (Apps Script)"**
+4. Click **Save settings**
+
+Now when you check/uncheck perks, they'll automatically update in your Google Sheet!
+
+### Your Google Sheet must have these columns:
+- **Date Used** - Where the app records when a perk was used (required)
+- **Used** - Optional, cleared when perk is marked as unused
