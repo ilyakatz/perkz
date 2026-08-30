@@ -118,3 +118,33 @@ Now when you check/uncheck perks, they'll automatically update in your Google Sh
 ### Your Google Sheet must have these columns:
 - **Date Used** - Where the app records when a perk was used (required)
 - **Used** - Optional, cleared when perk is marked as unused
+
+## Troubleshooting
+
+### Checkbox clicks do nothing
+1. **Check Settings** - Go to Settings tab and verify both URLs are entered
+   - Sheet URL should contain `/export?format=csv`
+   - Webhook URL should be your Apps Script deployment URL
+2. **Check error messages** - Look for red error text at bottom of screen
+3. **Verify sheet columns** - Make sure your Google Sheet has **Date Used** column
+4. **Check Apps Script sheet ID** - In Apps Script, verify `ALLOWED_SHEET_ID` matches your actual sheet
+
+### Checkbox changes locally but doesn't sync to Sheet
+1. **Webhook URL might be incorrect** - Double-check it's the full deployment URL
+2. **Sheet ID mismatch** - The sheet ID in Apps Script must match your actual sheet
+3. **Authorization issue** - Make sure the Apps Script is authorized to access your sheet
+4. **Permissions** - Your sheet must be writable by the account that deployed the Apps Script
+
+### How to verify your setup
+1. **Get your Sheet ID** from the URL: `docs.google.com/spreadsheets/d/{SHEET_ID}/edit`
+2. **Copy exact deployment URL** from Apps Script deploy dialog
+3. **Test the webhook** by checking a perk - you should see:
+   - Checkbox visually changes
+   - Snackbar message appears (success or error)
+   - Sheet updates within a few seconds
+4. **Check Google Sheet** - Verify the "Date Used" column has today's date
+
+### Still not working?
+- Make sure your Google Sheet columns are exactly: `Date Used` (case-insensitive is OK)
+- Verify Apps Script says `Deployed as: Web app`
+- Try **Save settings** again in the app after double-checking URLs
