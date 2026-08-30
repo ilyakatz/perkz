@@ -318,25 +318,23 @@ private fun SettingsTabContent(
         style = MaterialTheme.typography.bodySmall,
         modifier = Modifier.padding(bottom = 8.dp)
     )
-    val isValidUrl = urlInput.isBlank() || (
-        urlInput.contains("docs.google.com/spreadsheets") && 
-        urlInput.contains("/export") && 
-        urlInput.contains("format=csv")
-    )
+    val urlValidationResult = validateCsvUrl(urlInput)
+    val isValidUrl = urlValidationResult.isValid
+    
     OutlinedTextField(
         value = urlInput,
         onValueChange = onUrlChange,
         modifier = Modifier.fillMaxWidth(),
         label = { Text("Google Sheet CSV URL") },
         supportingText = {
-            if (!isValidUrl) {
+            if (!isValidUrl && urlInput.isNotBlank()) {
                 Text(
-                    "URL must include /export?format=csv",
+                    urlValidationResult.errorMessage,
                     color = Color(0xFFB3261E)
                 )
             }
         },
-        isError = !isValidUrl
+        isError = !isValidUrl && urlInput.isNotBlank()
     )
     OutlinedTextField(
         value = webhookInput,
@@ -756,6 +754,40 @@ enum class PerkStatus(
         cardColor = Color(0xFFE8F5E9),
         emptyText = "No perks marked used yet."
     )
+}
+
+data class UrlValidationResult(
+    val isValid: Boolean,
+    val errorMessage: String = ""
+)
+
+private fun validateCsvUrl(url: String): UrlValidationResult {
+    if (url.isBlank()) {
+        return UrlValidationResult(isValid = true)
+    }
+    
+    if (!url.contains("docs.google.com/spreadsheets")) {
+        return UrlValidationResult(
+            isValid = false,
+            errorMessage = "URL must be a Google Sheets link"
+        )
+    }
+    
+    if (!url.contains("/export")) {
+        return UrlValidationResult(
+            isValid = false,
+            errorMessage = "URL must be a CSV export URL (add /export?format=csv)"
+        )
+    }
+    
+    if (!url.contains("format=csv")) {
+        return UrlValidationResult(
+            isValid = false,
+            errorMessage = "URL must have format=csv parameter"
+        )
+    }
+    
+    return UrlValidationResult(isValid = true)
 }
 
 private fun parsePerksFromCsv(csv: String): List<PerkEntity> {
