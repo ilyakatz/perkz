@@ -629,7 +629,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     )
 
     init {
-        refresh()
+        // Automatically refresh when sheet URL becomes available
+        viewModelScope.launch {
+            sheetUrlFlow.collect { url ->
+                if (url.isNotBlank()) {
+                    repository.refresh(url)
+                }
+            }
+        }
     }
 
     fun refresh() {
