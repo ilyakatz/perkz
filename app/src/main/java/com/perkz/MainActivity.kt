@@ -2,11 +2,13 @@ package com.perkz
 
 import android.app.Application
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -44,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -138,7 +141,10 @@ private fun PerkScreen(viewModel: PerkViewModel) {
                 fontWeight = FontWeight.Bold
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.zIndex(10f)
+            ) {
                 FilterChip(
                     selected = selectedTab == AppTab.Perks,
                     onClick = { selectedTab = AppTab.Perks },
@@ -151,22 +157,24 @@ private fun PerkScreen(viewModel: PerkViewModel) {
                 )
             }
 
-            when (selectedTab) {
-                AppTab.Perks -> PerksTabContent(
-                    uiState = uiState,
-                    onCardSelect = viewModel::selectCard,
-                    onStatusSelect = viewModel::selectStatusFilter,
-                    onToggleUsed = viewModel::toggleUsed,
-                    onRefresh = viewModel::refresh
-                )
-                AppTab.Settings -> SettingsTabContent(
-                    urlInput = urlInput,
-                    webhookInput = webhookInput,
-                    onUrlChange = { urlInput = it },
-                    onWebhookChange = { webhookInput = it },
-                    onSave = { viewModel.saveSettings(urlInput, webhookInput) },
-                    onRefresh = viewModel::refresh
-                )
+            Box(modifier = Modifier.weight(1f)) {
+                when (selectedTab) {
+                    AppTab.Perks -> PerksTabContent(
+                        uiState = uiState,
+                        onCardSelect = viewModel::selectCard,
+                        onStatusSelect = viewModel::selectStatusFilter,
+                        onToggleUsed = viewModel::toggleUsed,
+                        onRefresh = viewModel::refresh
+                    )
+                    AppTab.Settings -> SettingsTabContent(
+                        urlInput = urlInput,
+                        webhookInput = webhookInput,
+                        onUrlChange = { urlInput = it },
+                        onWebhookChange = { webhookInput = it },
+                        onSave = { viewModel.saveSettings(urlInput, webhookInput) },
+                        onRefresh = viewModel::refresh
+                    )
+                }
             }
         }
     }
@@ -477,18 +485,23 @@ class PerkRepository(
             "$sheetUrl?cache=${System.currentTimeMillis()}"
         }
         try {
+            Log.d("PerkRepository", "Fetching CSV from: $cacheBustUrl")
             val csv = withContext(Dispatchers.IO) { URL(cacheBustUrl).readText() }
+            Log.d("PerkRepository", "CSV fetched, size: ${csv.length} bytes")
             if (csv.isBlank()) {
                 throw IllegalStateException("CSV returned empty - sheet may not be shared publicly")
             }
             val parsedPerks = parsePerksFromCsv(csv)
+            Log.d("PerkRepository", "Parsed ${parsedPerks.size} perks from CSV")
             if (parsedPerks.isEmpty()) {
                 throw IllegalStateException("No perks parsed from CSV - check sheet format")
             }
             // Only clear and insert if we successfully parsed perks
             dao.clearPerks()
             dao.insertPerks(parsedPerks)
+            Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
+            Log.e("PerkRepository", "Refresh failed: ${e.message}", e)
             throw IllegalStateException("Failed to refresh perks: ${e.message}", e)
         }
     }
@@ -666,15 +679,19 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val url = uiState.value.sheetUrl
             if (url.isBlank()) {
                 messageFlow.value = "Sheet URL is not set. Please enter it in Settings."
+                Log.w("PerkViewModel", "Refresh attempted without URL")
                 return@launch
             }
             loadingFlow.value = true
             try {
+                Log.d("PerkViewModel", "Starting refresh with URL: $url")
                 repository.refresh(url)
-                messageFlow.value = "Perks refreshed successfully"
+                messageFlow.value = "Perks refreshed successfully! Check the data above."
+                Log.i("PerkViewModel", "Refresh completed successfully")
             } catch (e: Exception) {
-                messageFlow.value = "Refresh failed: ${e.message ?: "unknown error"}"
-                e.printStackTrace()
+                val errorMsg = "Refresh failed: ${e.message ?: "unknown error"}"
+                messageFlow.value = errorMsg
+                Log.e("PerkViewModel", errorMsg, e)
             }
             loadingFlow.value = false
         }
