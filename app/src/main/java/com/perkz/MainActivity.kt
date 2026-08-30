@@ -211,102 +211,106 @@ private fun PerksTabContent(
         return
     }
 
-    // Refresh button
-    TextButton(onClick = onRefresh) {
-        Text("↻ Refresh")
-    }
-
-    if (uiState.availableCards.isNotEmpty()) {
-        Text(
-            text = "Filter by card",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            uiState.availableCards.forEach { card ->
-                FilterChip(
-                    selected = card == uiState.selectedCard,
-                    onClick = { onCardSelect(card) },
-                    label = { Text(card) }
-                )
-            }
-        }
-    }
-
-    if (uiState.availableStatusFilters.isNotEmpty()) {
-        Text(
-            text = "Filter by status",
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
-        )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            uiState.availableStatusFilters.forEach { statusFilter ->
-                FilterChip(
-                    selected = statusFilter == uiState.selectedStatusFilter,
-                    onClick = { onStatusSelect(statusFilter) },
-                    label = { Text(statusFilter) }
-                )
-            }
-        }
-    }
-
-    if (uiState.isLoading) {
-        CircularProgressIndicator()
-    }
-
-    if (!uiState.hasAnyPerks && !uiState.isLoading) {
-        Text("No perks found yet. Add your sheet URL in Settings, then tap Refresh.")
-    }
-
-    LazyColumn(
+    Column(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        uiState.statusGroups.forEach { statusGroup ->
-            item(key = "status-${statusGroup.status.name}") {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = statusGroup.status.label,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = statusGroup.status.titleColor
-                )
-            }
-            if (statusGroup.intervalGroups.isEmpty()) {
-                item(key = "empty-${statusGroup.status.name}") {
-                    Text(
-                        text = statusGroup.status.emptyText,
-                        style = MaterialTheme.typography.bodySmall
+        TextButton(onClick = onRefresh) {
+            Text("↻ Refresh")
+        }
+
+        if (uiState.availableCards.isNotEmpty()) {
+            Text(
+                text = "Filter by card",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                uiState.availableCards.forEach { card ->
+                    FilterChip(
+                        selected = card == uiState.selectedCard,
+                        onClick = { onCardSelect(card) },
+                        label = { Text(card) }
                     )
                 }
-            } else {
-                statusGroup.intervalGroups.forEach { intervalGroup ->
-                    item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
-                        Spacer(Modifier.height(4.dp))
+            }
+        }
+
+        if (uiState.availableStatusFilters.isNotEmpty()) {
+            Text(
+                text = "Filter by status",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                uiState.availableStatusFilters.forEach { statusFilter ->
+                    FilterChip(
+                        selected = statusFilter == uiState.selectedStatusFilter,
+                        onClick = { onStatusSelect(statusFilter) },
+                        label = { Text(statusFilter) }
+                    )
+                }
+            }
+        }
+
+        if (uiState.isLoading) {
+            CircularProgressIndicator()
+        }
+
+        if (!uiState.hasAnyPerks && !uiState.isLoading) {
+            Text("No perks found yet. Add your sheet URL in Settings, then tap Refresh.")
+        }
+
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            uiState.statusGroups.forEach { statusGroup ->
+                item(key = "status-${statusGroup.status.name}") {
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = statusGroup.status.label,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = statusGroup.status.titleColor
+                    )
+                }
+                if (statusGroup.intervalGroups.isEmpty()) {
+                    item(key = "empty-${statusGroup.status.name}") {
                         Text(
-                            text = intervalGroup.interval,
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
+                            text = statusGroup.status.emptyText,
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
-                    items(items = intervalGroup.items, key = { it.perk.id }) { item ->
-                        PerkRow(
-                            item = item,
-                            onCheckedChange = { checked ->
-                                onToggleUsed(item.perk, checked)
-                            }
-                        )
+                } else {
+                    statusGroup.intervalGroups.forEach { intervalGroup ->
+                        item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = intervalGroup.interval,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        items(items = intervalGroup.items, key = { it.perk.id }) { item ->
+                            PerkRow(
+                                item = item,
+                                onCheckedChange = { checked ->
+                                    onToggleUsed(item.perk, checked)
+                                }
+                            )
+                        }
                     }
                 }
             }
