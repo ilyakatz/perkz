@@ -53,11 +53,25 @@ To make checkbox toggles update your sheet, you need to create a Google Apps Scr
 1. Open [script.google.com](https://script.google.com)
 2. Click **+ New project**
 3. Name it something like "Perkz Webhook"
-4. In the `Code.gs` file, replace all code with this:
+4. Get your **Sheet ID** from your Google Sheet URL:
+   - URL format: `https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit`
+   - Copy just the `{SHEET_ID}` part
+5. In the `Code.gs` file, replace all code with this (add your sheet ID):
 
 ```javascript
+// IMPORTANT: Replace with YOUR Google Sheet ID
+const ALLOWED_SHEET_ID = "YOUR_SHEET_ID_HERE";
+
 function doPost(e) {
   const data = JSON.parse(e.postData.contents || "{}");
+  
+  // Security: Only allow updates to your specific sheet
+  if (data.sheetId !== ALLOWED_SHEET_ID) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      error: "Unauthorized sheet" 
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
+  
   const sheet = SpreadsheetApp.openById(data.sheetId).getSheetByName(
     SpreadsheetApp.openById(data.sheetId).getSheets().find(s => String(s.getSheetId()) === String(data.gid)).getName()
   );
