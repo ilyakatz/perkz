@@ -4,9 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.material3.MaterialTheme
 import androidx.lifecycle.ViewModelProvider
 import com.perkz.ui.screen.PerkScreen
+import com.perkz.ui.theme.PerkzTheme
 import com.perkz.viewmodel.PerkViewModel
 
 class MainActivity : ComponentActivity() {
@@ -20,7 +20,7 @@ class MainActivity : ComponentActivity() {
         )[PerkViewModel::class.java]
 
         setContent {
-            MaterialTheme {
+            PerkzTheme {
                 PerkScreen(viewModel = viewModel)
             }
         }
