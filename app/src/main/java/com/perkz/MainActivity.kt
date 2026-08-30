@@ -1109,13 +1109,22 @@ private fun monthFromText(value: String): Int? {
 }
 
 private fun isMarkedUsedInSheet(usedValue: String, dateUsedValue: String): Boolean {
+    // Only mark as used if Date Used column has a value
     if (dateUsedValue.trim().isNotBlank()) return true
+    
+    // Only check the Used column if it has content
     val rawUsed = usedValue.trim()
     if (rawUsed.isBlank()) return false
+    
+    // For the Used column, check for explicit "yes", "true", "x", "✓" values
     val normalized = rawUsed.lowercase(Locale.US)
-    if (normalized == "n/a" || normalized == "na") return false
-    val numeric = rawUsed.replace(",", "").toDoubleOrNull()
-    return numeric?.let { it > 0.0 } ?: true
+    return when {
+        normalized == "yes" || normalized == "true" || normalized == "x" || 
+        normalized == "✓" || normalized == "checked" -> true
+        normalized == "no" || normalized == "false" || normalized == "" || 
+        normalized == "n/a" || normalized == "na" -> false
+        else -> false // Default to NOT used for any other value
+    }
 }
 
 private fun updateSheetViaWebhook(
