@@ -836,34 +836,32 @@ private fun parsePerksFromCsv(csv: String): List<PerkEntity> {
     }
 
     val dataRows = if (hasHeader) rows.drop(1) else rows
-    var titleIndex = findHeaderIndex(header, setOf("name", "title", "perk", "benefit", "description"))
-        .takeIf { it >= 0 } ?: 0
-    val cardIndex = findHeaderIndex(header, setOf("card", "cardname"))
-        .takeIf { it >= 0 } ?: 1
     
-    // Handle duplicate headers - if both are "card" like, prefer the second one as title
-    if (titleIndex == cardIndex && header.size > 1) {
-        // Look for the second occurrence of a title-like column
-        val titleSearchTerms = setOf("name", "title", "perk", "benefit", "description")
-        var found = false
-        titleIndex = header.indices.firstOrNull { idx ->
-            val normalized = normalizeHeader(header[idx])
-            // Skip the first match (which is cardIndex)
-            val matches = normalized in titleSearchTerms
-            if (matches && !found) {
-                found = true
-                false // Skip the first match
-            } else if (matches) {
-                true // This is the second match
-            } else {
-                false
-            }
-        } ?: (if (cardIndex == 0 && header.size > 1) 1 else 0)
+    // For sheets with headers, use header-based matching
+    // For sheets without, use fixed column positions
+    val titleIndex = if (hasHeader) {
+        findHeaderIndex(header, setOf("perk", "benefit", "title", "name", "description"))
+            .takeIf { it >= 0 } ?: 1  // Default to column 1 for perk title
+    } else {
+        1
     }
-    val intervalIndex = findHeaderIndex(header, setOf("interval", "frequency", "cadence"))
-        .takeIf { it >= 0 } ?: 2
-    val resetPeriodIndex = findHeaderIndex(header, setOf("resetperiod", "periodwindow"))
-        .takeIf { it >= 0 } ?: 3
+    val cardIndex = if (hasHeader) {
+        findHeaderIndex(header, setOf("card", "cardname")).takeIf { it >= 0 } ?: 0
+    } else {
+        0
+    }
+    val intervalIndex = if (hasHeader) {
+        findHeaderIndex(header, setOf("interval", "frequency", "cadence"))
+            .takeIf { it >= 0 } ?: 2
+    } else {
+        2
+    }
+    val resetPeriodIndex = if (hasHeader) {
+        findHeaderIndex(header, setOf("resetperiod", "periodwindow"))
+            .takeIf { it >= 0 } ?: 3
+    } else {
+        3
+    }
     val maxValueOrUsesIndex = findHeaderIndex(
         header,
         setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit")
