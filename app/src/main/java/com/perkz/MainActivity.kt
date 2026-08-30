@@ -518,10 +518,16 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val dao = db.perkDao()
     private val sheetUrlKey: Preferences.Key<String> = stringPreferencesKey("sheet_url")
     private val webhookUrlKey: Preferences.Key<String> = stringPreferencesKey("webhook_url")
+    private val selectedCardKey: Preferences.Key<String> = stringPreferencesKey("selected_card")
+    private val selectedStatusFilterKey: Preferences.Key<String> = stringPreferencesKey("selected_status_filter")
     private val messageFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
-    private val selectedCardFlow = MutableStateFlow(ALL_CARDS_FILTER)
-    private val selectedStatusFilterFlow = MutableStateFlow(ALL_STATUSES_FILTER)
+    private val selectedCardFlow = application.dataStore.data.map {
+        it[selectedCardKey] ?: ALL_CARDS_FILTER
+    }.stateIn(viewModelScope, SharingStarted.Lazily, ALL_CARDS_FILTER)
+    private val selectedStatusFilterFlow = application.dataStore.data.map {
+        it[selectedStatusFilterKey] ?: ALL_STATUSES_FILTER
+    }.stateIn(viewModelScope, SharingStarted.Lazily, ALL_STATUSES_FILTER)
     private val filtersFlow = combine(selectedCardFlow, selectedStatusFilterFlow) { selectedCard, selectedStatus ->
         selectedCard to selectedStatus
     }
@@ -679,11 +685,19 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun selectCard(card: String) {
-        selectedCardFlow.value = card
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit {
+                it[selectedCardKey] = card
+            }
+        }
     }
 
     fun selectStatusFilter(filter: String) {
-        selectedStatusFilterFlow.value = filter
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit {
+                it[selectedStatusFilterKey] = filter
+            }
+        }
     }
 
     class Factory(private val app: Application) : ViewModelProvider.Factory {
