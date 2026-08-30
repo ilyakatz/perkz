@@ -478,11 +478,16 @@ class PerkRepository(
         }
         try {
             val csv = withContext(Dispatchers.IO) { URL(cacheBustUrl).readText() }
-            val parsedPerks = parsePerksFromCsv(csv)
-            dao.clearPerks()
-            if (parsedPerks.isNotEmpty()) {
-                dao.insertPerks(parsedPerks)
+            if (csv.isBlank()) {
+                throw IllegalStateException("CSV returned empty - sheet may not be shared publicly")
             }
+            val parsedPerks = parsePerksFromCsv(csv)
+            if (parsedPerks.isEmpty()) {
+                throw IllegalStateException("No perks parsed from CSV - check sheet format")
+            }
+            // Only clear and insert if we successfully parsed perks
+            dao.clearPerks()
+            dao.insertPerks(parsedPerks)
         } catch (e: Exception) {
             throw IllegalStateException("Failed to refresh perks: ${e.message}", e)
         }
