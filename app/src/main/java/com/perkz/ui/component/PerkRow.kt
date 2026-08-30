@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,12 +25,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.perkz.ui.model.UiPerkItem
+import com.perkz.ui.model.resolvedColors
 
 @Composable
 internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
+    val colors = item.status.resolvedColors()
+    // onCard* colors are derived from the scheme so they adapt to card luminance
+    val onCardPrimary = MaterialTheme.colorScheme.onSurface
+    val onCardSecondary = MaterialTheme.colorScheme.onSurfaceVariant
+
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = item.status.cardColor),
+        colors = CardDefaults.cardColors(
+            containerColor = colors.cardColor,
+            contentColor = onCardPrimary,
+        ),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         shape = MaterialTheme.shapes.medium
     ) {
@@ -43,7 +53,7 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                 modifier = Modifier
                     .width(4.dp)
                     .fillMaxHeight()
-                    .background(item.status.accentColor)
+                    .background(colors.accentColor)
             )
             Row(
                 modifier = Modifier
@@ -54,7 +64,12 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                 Checkbox(
                     checked = item.isUsedThisPeriod,
                     onCheckedChange = onCheckedChange,
-                    modifier = Modifier.padding(top = 0.dp)
+                    modifier = Modifier.padding(top = 0.dp),
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = colors.accentColor,
+                        uncheckedColor = colors.accentColor.copy(alpha = 0.7f),
+                        checkmarkColor = colors.cardColor,
+                    )
                 )
                 Column(
                     modifier = Modifier
@@ -65,14 +80,14 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                     // Status badge pill
                     Surface(
                         shape = MaterialTheme.shapes.extraSmall,
-                        color = item.status.accentColor.copy(alpha = 0.15f),
+                        color = colors.accentColor.copy(alpha = 0.15f),
                         modifier = Modifier.align(Alignment.Start)
                     ) {
                         Text(
                             text = item.status.badgeText,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.ExtraBold,
-                            color = item.status.accentColor,
+                            color = colors.accentColor,
                             modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                         )
                     }
@@ -82,14 +97,15 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                     Text(
                         text = item.perk.title,
                         style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        color = onCardPrimary,
                     )
 
                     if (item.perk.card.isNotBlank()) {
                         Text(
                             text = item.perk.card,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = onCardSecondary,
                         )
                     }
 
@@ -102,12 +118,27 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                             modifier = Modifier.padding(top = 4.dp)
                         ) {
                             if (hasValue) {
-                                PerkMetaItem(label = "VALUE", value = item.perk.maxValueOrUses)
+                                PerkMetaItem(
+                                    label = "VALUE",
+                                    value = item.perk.maxValueOrUses,
+                                    labelColor = onCardSecondary,
+                                    valueColor = onCardPrimary,
+                                )
                             }
                             if (hasReset) {
-                                PerkMetaItem(label = "RESETS", value = item.resetPeriodLabel)
+                                PerkMetaItem(
+                                    label = "RESETS",
+                                    value = item.resetPeriodLabel,
+                                    labelColor = onCardSecondary,
+                                    valueColor = onCardPrimary,
+                                )
                             }
-                            PerkMetaItem(label = "PERIOD", value = item.periodLabel)
+                            PerkMetaItem(
+                                label = "PERIOD",
+                                value = item.periodLabel,
+                                labelColor = onCardSecondary,
+                                valueColor = onCardPrimary,
+                            )
                         }
                     }
 
@@ -116,7 +147,7 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                             text = "⚠ Deadline: ${item.perk.deadlineTrigger}",
                             style = MaterialTheme.typography.bodySmall,
                             fontWeight = FontWeight.Medium,
-                            color = item.status.accentColor,
+                            color = colors.accentColor,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -125,7 +156,7 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                         Text(
                             text = item.perk.details,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = onCardSecondary,
                             modifier = Modifier.padding(top = 2.dp)
                         )
                     }
@@ -136,17 +167,23 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
 }
 
 @Composable
-private fun PerkMetaItem(label: String, value: String) {
+private fun PerkMetaItem(
+    label: String,
+    value: String,
+    labelColor: androidx.compose.ui.graphics.Color,
+    valueColor: androidx.compose.ui.graphics.Color,
+) {
     Column {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = labelColor,
         )
         Text(
             text = value,
             style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium
+            fontWeight = FontWeight.Medium,
+            color = valueColor,
         )
     }
 }

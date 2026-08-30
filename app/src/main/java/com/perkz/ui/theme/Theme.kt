@@ -1,8 +1,11 @@
 package com.perkz.ui.theme
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import com.perkz.ui.model.ThemeMode
 
 private val LightColorScheme = lightColorScheme(
     primary = PerkzPrimary,
@@ -31,10 +34,45 @@ private val LightColorScheme = lightColorScheme(
     onErrorContainer = PerkzOnErrorContainer,
 )
 
+private val DarkColorScheme = darkColorScheme(
+    primary = PerkzDarkPrimary,
+    onPrimary = PerkzDarkOnPrimary,
+    primaryContainer = PerkzDarkPrimaryContainer,
+    onPrimaryContainer = PerkzDarkOnPrimaryContainer,
+    secondary = PerkzDarkSecondary,
+    onSecondary = PerkzDarkOnSecondary,
+    secondaryContainer = PerkzDarkSecondaryContainer,
+    onSecondaryContainer = PerkzDarkOnSecondaryContainer,
+    tertiary = PerkzDarkTertiary,
+    onTertiary = PerkzDarkOnTertiary,
+    tertiaryContainer = PerkzDarkTertiaryContainer,
+    onTertiaryContainer = PerkzDarkOnTertiaryContainer,
+    background = PerkzDarkBackground,
+    onBackground = PerkzDarkOnBackground,
+    surface = PerkzDarkSurface,
+    onSurface = PerkzDarkOnSurface,
+    surfaceVariant = PerkzDarkSurfaceVariant,
+    onSurfaceVariant = PerkzDarkOnSurfaceVariant,
+    outline = PerkzDarkOutline,
+    outlineVariant = PerkzDarkOutlineVariant,
+    error = PerkzDarkError,
+    onError = PerkzDarkOnError,
+    errorContainer = PerkzDarkErrorContainer,
+    onErrorContainer = PerkzDarkOnErrorContainer,
+)
+
 @Composable
-fun PerkzTheme(content: @Composable () -> Unit) {
+fun PerkzTheme(
+    themeMode: ThemeMode = ThemeMode.SYSTEM,
+    content: @Composable () -> Unit
+) {
+    val darkTheme = when (themeMode) {
+        ThemeMode.SYSTEM -> isSystemInDarkTheme()
+        ThemeMode.LIGHT -> false
+        ThemeMode.DARK -> true
+    }
     MaterialTheme(
-        colorScheme = LightColorScheme,
+        colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme,
         content = content
     )
 }

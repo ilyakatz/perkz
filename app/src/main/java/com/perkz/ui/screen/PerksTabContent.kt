@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.perkz.data.db.PerkEntity
 import com.perkz.ui.component.PerkRow
 import com.perkz.ui.model.UiState
+import com.perkz.ui.model.resolvedColors
 
 @Composable
 internal fun PerksTabContent(
@@ -209,6 +210,7 @@ private fun PerkList(
     ) {
         uiState.statusGroups.forEach { statusGroup ->
             item(key = "header-${statusGroup.status.name}") {
+                val statusColors = statusGroup.status.resolvedColors()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
@@ -217,14 +219,14 @@ private fun PerkList(
                         modifier = Modifier
                             .size(10.dp)
                             .clip(CircleShape)
-                            .background(statusGroup.status.accentColor)
+                            .background(statusColors.accentColor)
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = statusGroup.status.label,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.Bold,
-                        color = statusGroup.status.titleColor
+                        color = statusColors.titleColor,
                     )
                 }
             }

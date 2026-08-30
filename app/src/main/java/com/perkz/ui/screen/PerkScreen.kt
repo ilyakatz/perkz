@@ -120,8 +120,10 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,
                     webhookInput = webhookInput,
+                    selectedThemeMode = uiState.themeMode,
                     onUrlChange = { urlInput = it },
                     onWebhookChange = { webhookInput = it },
+                    onThemeModeChange = viewModel::saveThemeMode,
                     onSave = { viewModel.saveSettings(urlInput, webhookInput) },
                     onRefresh = viewModel::refresh
                 )

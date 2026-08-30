@@ -22,6 +22,7 @@ import com.perkz.domain.prettyInterval
 import com.perkz.ui.model.ALL_CARDS_FILTER
 import com.perkz.ui.model.ALL_STATUSES_FILTER
 import com.perkz.ui.model.PerkStatus
+import com.perkz.ui.model.ThemeMode
 import com.perkz.ui.model.UiIntervalGroup
 import com.perkz.ui.model.UiPerkItem
 import com.perkz.ui.model.UiState
@@ -50,6 +51,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val webhookUrlKey: Preferences.Key<String> = stringPreferencesKey("webhook_url")
     private val selectedCardKey: Preferences.Key<String> = stringPreferencesKey("selected_card")
     private val selectedStatusFilterKey: Preferences.Key<String> = stringPreferencesKey("selected_status_filter")
+    private val themeModeKey: Preferences.Key<String> = stringPreferencesKey("theme_mode")
     private val messageFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
     private val selectedCardFlow = application.dataStore.data.map {
@@ -71,8 +73,11 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val webhookUrlFlow: Flow<String> = application.dataStore.data.map {
         it[webhookUrlKey] ?: ""
     }
-    private val settingsFlow = combine(sheetUrlFlow, webhookUrlFlow) { sheetUrl, webhookUrl ->
-        sheetUrl to webhookUrl
+    private val themeModeFlow: Flow<ThemeMode> = application.dataStore.data.map { prefs ->
+        ThemeMode.entries.firstOrNull { it.name == prefs[themeModeKey] } ?: ThemeMode.SYSTEM
+    }
+    private val settingsFlow = combine(sheetUrlFlow, webhookUrlFlow, themeModeFlow) { sheetUrl, webhookUrl, themeMode ->
+        Triple(sheetUrl, webhookUrl, themeMode)
     }
 
     private val repository = PerkRepository(dao = dao)
@@ -84,7 +89,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         filtersFlow,
         statusFlow
     ) { settings, perks, usage, filters, status ->
-        val (sheetUrl, webhookUrl) = settings
+        val (sheetUrl, webhookUrl, themeMode) = settings
         val (selectedCard, selectedStatusFilter) = filters
         val (loading, message) = status
         val today = LocalDate.now()
@@ -142,6 +147,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         UiState(
             sheetUrl = sheetUrl,
             webhookUrl = webhookUrl,
+            themeMode = themeMode,
             statusGroups = statusGroups,
             items = statusFilteredItems,
             hasAnyPerks = filteredItems.isNotEmpty(),
@@ -229,6 +235,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
 
     fun clearMessage() {
         messageFlow.value = null
+    }
+
+    fun saveThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit {
+                it[themeModeKey] = mode.name
+            }
+        }
     }
 
     fun selectCard(card: String) {

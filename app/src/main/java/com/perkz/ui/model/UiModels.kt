@@ -8,6 +8,7 @@ internal const val ALL_STATUSES_FILTER = "All statuses"
 data class UiState(
     val sheetUrl: String = "",
     val webhookUrl: String = "",
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val statusGroups: List<UiStatusGroup> = emptyList(),
     val items: List<UiPerkItem> = emptyList(),
     val hasAnyPerks: Boolean = false,
