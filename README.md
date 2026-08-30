@@ -83,7 +83,7 @@ function doPost(e) {
 
   const row = Number(data.rowNumber);
   sheet.getRange(row, idxDateUsed).setValue(data.checked ? data.dateUsed : "");
-  if (idxUsed && !data.checked) sheet.getRange(row, idxUsed).setValue("");
+  if (idxUsed) sheet.getRange(row, idxUsed).setValue(data.checked ? "yes" : "");
 
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);
