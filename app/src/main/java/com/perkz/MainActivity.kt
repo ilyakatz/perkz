@@ -1119,24 +1119,29 @@ private fun updateSheetViaWebhook(
     val body = """
         {"sheetId":"${jsonEscape(sheetId)}","gid":"${jsonEscape(gid)}","rowNumber":$rowNumber,"checked":$checked,"dateUsed":"${jsonEscape(dateUsed)}"}
     """.trimIndent()
-    val connection = (URL(webhookUrl).openConnection() as HttpURLConnection).apply {
-        requestMethod = "POST"
-        doOutput = true
-        setRequestProperty("Content-Type", "application/json; charset=utf-8")
-        connectTimeout = 10_000
-        readTimeout = 10_000
-    }
-    connection.outputStream.use { stream ->
-        stream.write(body.toByteArray(Charsets.UTF_8))
-    }
-    val code = connection.responseCode
-    if (code !in 200..299) {
-        val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $code"
-        throw IllegalStateException("Webhook update failed ($code): $errorText")
-    }
-    val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-    if (responseText.isNotBlank() && !responseText.contains("\"ok\":true")) {
-        throw IllegalStateException("Webhook did not confirm success: $responseText")
+    
+    try {
+        val connection = (URL(webhookUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            doOutput = true
+            setRequestProperty("Content-Type", "application/json; charset=utf-8")
+            connectTimeout = 10_000
+            readTimeout = 10_000
+        }
+        connection.outputStream.use { stream ->
+            stream.write(body.toByteArray(Charsets.UTF_8))
+        }
+        val code = connection.responseCode
+        if (code !in 200..299) {
+            val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $code"
+            throw IllegalStateException("Webhook update failed ($code): $errorText")
+        }
+        val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+        if (responseText.isNotBlank() && !responseText.contains("\"ok\":true")) {
+            throw IllegalStateException("Webhook did not confirm success: $responseText")
+        }
+    } catch (e: Exception) {
+        throw IllegalStateException("Webhook error: ${e.message}", e)
     }
 }
 
