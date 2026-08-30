@@ -156,7 +156,8 @@ private fun PerkScreen(viewModel: PerkViewModel) {
                     uiState = uiState,
                     onCardSelect = viewModel::selectCard,
                     onStatusSelect = viewModel::selectStatusFilter,
-                    onToggleUsed = viewModel::toggleUsed
+                    onToggleUsed = viewModel::toggleUsed,
+                    onRefresh = viewModel::refresh
                 )
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,
@@ -176,7 +177,8 @@ private fun PerksTabContent(
     uiState: UiState,
     onCardSelect: (String) -> Unit,
     onStatusSelect: (String) -> Unit,
-    onToggleUsed: (PerkEntity, Boolean) -> Unit
+    onToggleUsed: (PerkEntity, Boolean) -> Unit,
+    onRefresh: () -> Unit
 ) {
     if (uiState.sheetUrl.isBlank()) {
         Column(
@@ -199,6 +201,11 @@ private fun PerksTabContent(
             )
         }
         return
+    }
+
+    // Refresh button
+    TextButton(onClick = onRefresh) {
+        Text("↻ Refresh")
     }
 
     if (uiState.availableCards.isNotEmpty()) {
@@ -463,7 +470,13 @@ class PerkRepository(
     fun observeUsage(): Flow<List<UsageEntity>> = dao.observeUsage()
 
     suspend fun refresh(sheetUrl: String) {
-        val csv = withContext(Dispatchers.IO) { URL(sheetUrl).readText() }
+        // Add cache-busting query parameter to bypass Google's CDN cache
+        val cacheBustUrl = if (sheetUrl.contains("?")) {
+            "$sheetUrl&cache=${System.currentTimeMillis()}"
+        } else {
+            "$sheetUrl?cache=${System.currentTimeMillis()}"
+        }
+        val csv = withContext(Dispatchers.IO) { URL(cacheBustUrl).readText() }
         val parsedPerks = parsePerksFromCsv(csv)
         dao.clearPerks()
         if (parsedPerks.isNotEmpty()) {
