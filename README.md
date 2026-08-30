@@ -53,7 +53,7 @@ To make checkbox toggles update your sheet, you need to create a Google Apps Scr
 1. Open [script.google.com](https://script.google.com)
 2. Click **+ New project**
 3. Name it something like "Perkz Webhook"
-4. Replace the default code with this:
+4. In the `Code.gs` file, replace all code with this:
 
 ```javascript
 function doPost(e) {
@@ -78,15 +78,19 @@ function doPost(e) {
 
 ### Step 2: Deploy as Web App
 
-1. Click **Deploy** (top right)
-2. Select **New deployment**
-3. Click the gear icon and select **Web app**
-4. Set:
-   - **Execute as**: Your email/account
-   - **Who has access**: Anyone with the link
-5. Click **Deploy**
-6. Click **Authorize access** and allow the script to access your sheets
-7. Copy the deployment URL (it will be shown in a dialog)
+1. Click **Deploy** button in the top right
+2. If this is a new project:
+   - Select **New deployment**
+   - Click the gear/settings icon
+   - Choose **Web app**
+   - Set **Execute as**: Your Google account
+   - Set **Who has access**: Anyone with the link
+   - Click **Deploy**
+3. If you already have deployments:
+   - Click **Deploy** → **Manage deployments**
+   - Or click the dropdown next to Deploy and select the existing deployment
+4. A dialog will show your deployment URL - copy it
+5. Click **Authorize access** and grant permission for the script to access your sheets
 
 ### Step 3: Add webhook URL to Perkz app
 
