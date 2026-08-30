@@ -323,49 +323,70 @@ private fun SettingsTabContent(
     onSave: () -> Unit,
     onRefresh: () -> Unit
 ) {
-    Text(
-        text = "Sheet connection",
-        style = MaterialTheme.typography.titleSmall,
-        fontWeight = FontWeight.SemiBold
-    )
-    Text(
-        text = "Use the CSV export URL from your Google Sheet",
-        style = MaterialTheme.typography.bodySmall,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
-    val urlValidationResult = validateCsvUrl(urlInput)
-    val isValidUrl = urlValidationResult.isValid
-    
-    OutlinedTextField(
-        value = urlInput,
-        onValueChange = onUrlChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Google Sheet CSV URL") },
-        supportingText = {
-            if (!isValidUrl && urlInput.isNotBlank()) {
-                Text(
-                    urlValidationResult.errorMessage,
-                    color = Color(0xFFB3261E)
-                )
-            }
-        },
-        isError = !isValidUrl && urlInput.isNotBlank()
-    )
-    OutlinedTextField(
-        value = webhookInput,
-        onValueChange = onWebhookChange,
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text("Update webhook URL (Apps Script)") }
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Button(
-            onClick = onSave,
-            enabled = isValidUrl
-        ) {
-            Text("Save settings")
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(bottom = 32.dp)
+    ) {
+        item {
+            Text(
+                text = "Sheet connection",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold
+            )
         }
-        TextButton(onClick = onRefresh) {
-            Text("Refresh")
+        item {
+            Text(
+                text = "Use the CSV export URL from your Google Sheet",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        item {
+            val urlValidationResult = validateCsvUrl(urlInput)
+            val isValidUrl = urlValidationResult.isValid
+            
+            OutlinedTextField(
+                value = urlInput,
+                onValueChange = onUrlChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Google Sheet CSV URL") },
+                supportingText = {
+                    if (!isValidUrl && urlInput.isNotBlank()) {
+                        Text(
+                            urlValidationResult.errorMessage,
+                            color = Color(0xFFB3261E)
+                        )
+                    }
+                },
+                isError = !isValidUrl && urlInput.isNotBlank()
+            )
+        }
+        item {
+            val urlValidationResult = validateCsvUrl(urlInput)
+            val isValidUrl = urlValidationResult.isValid
+            
+            OutlinedTextField(
+                value = webhookInput,
+                onValueChange = onWebhookChange,
+                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Update webhook URL (Apps Script)") }
+            )
+        }
+        item {
+            val urlValidationResult = validateCsvUrl(urlInput)
+            val isValidUrl = urlValidationResult.isValid
+            
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onSave,
+                    enabled = isValidUrl
+                ) {
+                    Text("Save settings")
+                }
+                TextButton(onClick = onRefresh) {
+                    Text("Refresh")
+                }
+            }
         }
     }
 }
