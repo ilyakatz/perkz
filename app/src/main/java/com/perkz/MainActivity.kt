@@ -477,6 +477,9 @@ interface PerkDao {
     @Query("DELETE FROM perks")
     suspend fun clearPerks()
 
+    @Query("DELETE FROM usage")
+    suspend fun clearUsage()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPerks(items: List<PerkEntity>)
 
@@ -523,6 +526,8 @@ class PerkRepository(
             }
             // Only clear and insert if we successfully parsed perks
             dao.clearPerks()
+            // The sheet is the source of truth after a successful refresh.
+            dao.clearUsage()
             dao.insertPerks(parsedPerks)
             Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
