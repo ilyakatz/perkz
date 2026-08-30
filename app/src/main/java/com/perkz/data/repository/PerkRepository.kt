@@ -60,6 +60,8 @@ class PerkRepository(private val dao: PerkDao) {
         sheetUrl: String,
         webhookUrl: String
     ): ToggleSyncResult {
+        updateLocalUsed(perk, checked)
+
         val hasWebhook = webhookUrl.isNotBlank()
         if (hasWebhook) {
             withContext(Dispatchers.IO) {
@@ -74,6 +76,10 @@ class PerkRepository(private val dao: PerkDao) {
             throw IllegalStateException("Set 'Update webhook URL (Apps Script)' in Settings first.")
         }
 
+        return if (hasWebhook) ToggleSyncResult.SyncedToSheet else ToggleSyncResult.LocalOnly
+    }
+
+    suspend fun updateLocalUsed(perk: PerkEntity, checked: Boolean) {
         val periodKey = periodKeyFor(perk, LocalDate.now())
         if (checked) {
             dao.upsertUsage(UsageEntity(perkId = perk.id, periodKey = periodKey))
@@ -81,7 +87,6 @@ class PerkRepository(private val dao: PerkDao) {
             dao.deleteUsage(perk.id, periodKey)
         }
         dao.updateUsedFromSheet(perk.id, checked)
-        return if (hasWebhook) ToggleSyncResult.SyncedToSheet else ToggleSyncResult.LocalOnly
     }
 }
 

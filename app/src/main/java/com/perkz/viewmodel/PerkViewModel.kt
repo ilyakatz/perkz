@@ -216,19 +216,20 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
 
     fun toggleUsed(perk: PerkEntity, checked: Boolean) {
         viewModelScope.launch {
-            runCatching {
+            try {
                 repository.setUsed(
                     perk = perk,
                     checked = checked,
                     sheetUrl = uiState.value.sheetUrl,
                     webhookUrl = uiState.value.webhookUrl
-                )
-            }.onSuccess { result ->
-                if (result == ToggleSyncResult.LocalOnly) {
-                    messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                ).also { result ->
+                    if (result == ToggleSyncResult.LocalOnly) {
+                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                    }
                 }
-            }.onFailure {
-                messageFlow.value = "Could not update: ${it.message ?: "unknown error"}"
+            } catch (error: Exception) {
+                repository.updateLocalUsed(perk, perk.usedFromSheet)
+                messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
             }
         }
     }
