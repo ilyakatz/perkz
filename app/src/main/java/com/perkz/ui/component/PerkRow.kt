@@ -102,11 +102,17 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                     )
 
                     if (item.perk.card.isNotBlank()) {
-                        Text(
-                            text = item.perk.card,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = onCardSecondary,
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            CardBrandBadge(cardName = item.perk.card)
+                            Text(
+                                text = item.perk.card,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = onCardSecondary,
+                            )
+                        }
                     }
 
                     // Metadata row: value + reset period
