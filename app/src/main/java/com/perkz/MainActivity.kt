@@ -833,11 +833,25 @@ private fun parsePerksFromCsv(csv: String): List<PerkEntity> {
         .takeIf { it >= 0 } ?: 0
     val cardIndex = findHeaderIndex(header, setOf("card", "cardname"))
         .takeIf { it >= 0 } ?: 1
-    if (titleIndex == cardIndex) {
-        titleIndex = when {
-            cardIndex == 0 && header.size > 1 -> 1
-            else -> header.indices.firstOrNull { it != cardIndex } ?: titleIndex
-        }
+    
+    // Handle duplicate headers - if both are "card" like, prefer the second one as title
+    if (titleIndex == cardIndex && header.size > 1) {
+        // Look for the second occurrence of a title-like column
+        val titleSearchTerms = setOf("name", "title", "perk", "benefit", "description")
+        var found = false
+        titleIndex = header.indices.firstOrNull { idx ->
+            val normalized = normalizeHeader(header[idx])
+            // Skip the first match (which is cardIndex)
+            val matches = normalized in titleSearchTerms
+            if (matches && !found) {
+                found = true
+                false // Skip the first match
+            } else if (matches) {
+                true // This is the second match
+            } else {
+                false
+            }
+        } ?: (if (cardIndex == 0 && header.size > 1) 1 else 0)
     }
     val intervalIndex = findHeaderIndex(header, setOf("interval", "frequency", "cadence"))
         .takeIf { it >= 0 } ?: 2
