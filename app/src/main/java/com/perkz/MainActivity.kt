@@ -476,11 +476,15 @@ class PerkRepository(
         } else {
             "$sheetUrl?cache=${System.currentTimeMillis()}"
         }
-        val csv = withContext(Dispatchers.IO) { URL(cacheBustUrl).readText() }
-        val parsedPerks = parsePerksFromCsv(csv)
-        dao.clearPerks()
-        if (parsedPerks.isNotEmpty()) {
-            dao.insertPerks(parsedPerks)
+        try {
+            val csv = withContext(Dispatchers.IO) { URL(cacheBustUrl).readText() }
+            val parsedPerks = parsePerksFromCsv(csv)
+            dao.clearPerks()
+            if (parsedPerks.isNotEmpty()) {
+                dao.insertPerks(parsedPerks)
+            }
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to refresh perks: ${e.message}", e)
         }
     }
 
@@ -660,10 +664,12 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
             loadingFlow.value = true
-            runCatching {
+            try {
                 repository.refresh(url)
-            }.onFailure {
-                messageFlow.value = "Refresh failed: ${it.message ?: "unknown error"}"
+                messageFlow.value = "Perks refreshed successfully"
+            } catch (e: Exception) {
+                messageFlow.value = "Refresh failed: ${e.message ?: "unknown error"}"
+                e.printStackTrace()
             }
             loadingFlow.value = false
         }
