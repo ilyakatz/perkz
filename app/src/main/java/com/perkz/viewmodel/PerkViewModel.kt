@@ -52,6 +52,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val selectedCardKey: Preferences.Key<String> = stringPreferencesKey("selected_card")
     private val selectedStatusFilterKey: Preferences.Key<String> = stringPreferencesKey("selected_status_filter")
     private val themeModeKey: Preferences.Key<String> = stringPreferencesKey("theme_mode")
+    private val collapsedStatusesKey: Preferences.Key<String> = stringPreferencesKey("collapsed_statuses")
+    private val collapsedIntervalsKey: Preferences.Key<String> = stringPreferencesKey("collapsed_intervals")
     private val messageFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
     private val selectedCardFlow = application.dataStore.data.map {
@@ -76,8 +78,20 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val themeModeFlow: Flow<ThemeMode> = application.dataStore.data.map { prefs ->
         ThemeMode.entries.firstOrNull { it.name == prefs[themeModeKey] } ?: ThemeMode.SYSTEM
     }
-    private val settingsFlow = combine(sheetUrlFlow, webhookUrlFlow, themeModeFlow) { sheetUrl, webhookUrl, themeMode ->
-        Triple(sheetUrl, webhookUrl, themeMode)
+    private val collapsedStatusesFlow: Flow<Set<PerkStatus>> = application.dataStore.data.map { prefs ->
+        prefs[collapsedStatusesKey]
+            .orEmpty()
+            .split(',')
+            .mapNotNull { value -> PerkStatus.entries.firstOrNull { it.name == value } }
+            .toSet()
+    }
+    private val collapsedIntervalsFlow: Flow<Set<String>> = application.dataStore.data.map { prefs ->
+        prefs[collapsedIntervalsKey].orEmpty().split(',').filter { it.isNotBlank() }.toSet()
+    }
+    private val settingsFlow = combine(
+        sheetUrlFlow, webhookUrlFlow, themeModeFlow, collapsedStatusesFlow, collapsedIntervalsFlow
+    ) { sheetUrl, webhookUrl, themeMode, collapsedStatuses, collapsedIntervals ->
+        Triple(Triple(sheetUrl, webhookUrl, themeMode), collapsedStatuses, collapsedIntervals)
     }
 
     private val repository = PerkRepository(dao = dao)
@@ -89,7 +103,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         filtersFlow,
         statusFlow
     ) { settings, perks, usage, filters, status ->
-        val (sheetUrl, webhookUrl, themeMode) = settings
+        val (baseSettings, collapsedStatuses, collapsedIntervals) = settings
+        val (sheetUrl, webhookUrl, themeMode) = baseSettings
         val (selectedCard, selectedStatusFilter) = filters
         val (loading, message) = status
         val today = LocalDate.now()
@@ -138,7 +153,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val intervalGroups = byStatus
                 .groupBy { prettyInterval(it.perk.interval) }
                 .toList()
-                .sortedBy { it.first }
+                .sortedWith(compareBy({ if (it.first.equals("Monthly", ignoreCase = true)) 0 else 1 }, { it.first }))
                 .map { (interval, groupedItems) ->
                     UiIntervalGroup(interval = interval, items = groupedItems.sortedBy { it.perk.title })
                 }
@@ -149,6 +164,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             webhookUrl = webhookUrl,
             themeMode = themeMode,
             statusGroups = statusGroups,
+            collapsedStatuses = collapsedStatuses,
+            collapsedIntervals = collapsedIntervals,
             items = statusFilteredItems,
             hasAnyPerks = filteredItems.isNotEmpty(),
             availableCards = availableCards,
@@ -258,6 +275,41 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit {
                 it[selectedStatusFilterKey] = filter
+            }
+        }
+    }
+
+    fun toggleStatusCollapsed(status: PerkStatus) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit { preferences ->
+                val current = preferences[collapsedStatusesKey]
+                    .orEmpty()
+                    .split(',')
+                    .mapNotNull { value -> PerkStatus.entries.firstOrNull { it.name == value } }
+                    .toMutableSet()
+                if (!current.add(status)) current.remove(status)
+                preferences[collapsedStatusesKey] = current.joinToString(",") { it.name }
+            }
+
+        }
+    }
+
+    fun toggleIntervalCollapsed(interval: String) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit { preferences ->
+                val current = preferences[collapsedIntervalsKey].orEmpty()
+                    .split(',').filter { it.isNotBlank() }.toMutableSet()
+                if (!current.add(interval)) current.remove(interval)
+                preferences[collapsedIntervalsKey] = current.joinToString(",")
+            }
+
+        }
+    }
+
+    fun setIntervalsCollapsed(intervals: Set<String>, collapsed: Boolean) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit { preferences ->
+                preferences[collapsedIntervalsKey] = if (collapsed) intervals.joinToString(",") else ""
             }
         }
     }

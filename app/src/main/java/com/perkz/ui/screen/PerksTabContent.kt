@@ -14,7 +14,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -23,6 +25,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import com.perkz.data.db.PerkEntity
 import com.perkz.ui.component.PerkRow
 import com.perkz.ui.model.UiState
+import com.perkz.ui.model.PerkStatus
 import com.perkz.ui.model.resolvedColors
 
 @Composable
@@ -40,6 +44,9 @@ internal fun PerksTabContent(
     uiState: UiState,
     onCardSelect: (String) -> Unit,
     onStatusSelect: (String) -> Unit,
+    onToggleStatusCollapsed: (PerkStatus) -> Unit,
+    onToggleIntervalCollapsed: (String) -> Unit,
+    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit
 ) {
     if (uiState.sheetUrl.isBlank()) {
@@ -60,7 +67,7 @@ internal fun PerksTabContent(
         when {
             uiState.isLoading -> LoadingState()
             !uiState.hasAnyPerks -> EmptyState()
-            else -> PerkList(uiState = uiState, onToggleUsed = onToggleUsed)
+            else -> PerkList(uiState = uiState, onToggleStatusCollapsed = onToggleStatusCollapsed, onToggleIntervalCollapsed = onToggleIntervalCollapsed, onSetIntervalsCollapsed = onSetIntervalsCollapsed, onToggleUsed = onToggleUsed)
         }
     }
 }
@@ -201,6 +208,9 @@ private fun FilterSection(
 @Composable
 private fun PerkList(
     uiState: UiState,
+    onToggleStatusCollapsed: (PerkStatus) -> Unit,
+    onToggleIntervalCollapsed: (String) -> Unit,
+    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit
 ) {
     LazyColumn(
@@ -208,12 +218,17 @@ private fun PerkList(
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        uiState.statusGroups.forEach { statusGroup ->
+        val listScope = this
+        uiState.statusGroups.forEach statusLoop@{ statusGroup ->
+            val collapsed = statusGroup.status in uiState.collapsedStatuses
             item(key = "header-${statusGroup.status.name}") {
                 val statusColors = statusGroup.status.resolvedColors()
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onToggleStatusCollapsed(statusGroup.status) }
+                        .padding(top = 4.dp, bottom = 2.dp)
                 ) {
                     Box(
                         modifier = Modifier
@@ -228,37 +243,63 @@ private fun PerkList(
                         fontWeight = FontWeight.Bold,
                         color = statusColors.titleColor,
                     )
-                }
-            }
-            if (statusGroup.intervalGroups.isEmpty()) {
-                item(key = "empty-${statusGroup.status.name}") {
+                    Spacer(Modifier.weight(1f))
                     Text(
-                        text = statusGroup.status.emptyText,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(start = 18.dp, bottom = 4.dp)
+                        text = if (collapsed) "+" else "-",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = statusColors.titleColor
                     )
                 }
-            } else {
-                statusGroup.intervalGroups.forEach { intervalGroup ->
-                    item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
-                        Text(
-                            text = intervalGroup.interval,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(start = 18.dp, top = 2.dp, bottom = 2.dp)
-                        )
-                    }
-                    items(items = intervalGroup.items, key = { it.perk.id }) { item ->
-                        PerkRow(
-                            item = item,
-                            onCheckedChange = { checked -> onToggleUsed(item.perk, checked) }
-                        )
-                    }
-                }
+            }
+            if (!collapsed) {
+                listScope.addStatusItems(statusGroup, uiState.collapsedIntervals, onToggleIntervalCollapsed, onSetIntervalsCollapsed, onToggleUsed)
             }
         }
+
         item { Spacer(Modifier.height(8.dp)) }
     }
 }
 
+private fun LazyListScope.addStatusItems(
+    statusGroup: com.perkz.ui.model.UiStatusGroup,
+    collapsedIntervals: Set<String>,
+    onToggleIntervalCollapsed: (String) -> Unit,
+    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
+    onToggleUsed: (PerkEntity, Boolean) -> Unit
+) {
+    val intervals = statusGroup.intervalGroups.map { it.interval }.toSet()
+    if (statusGroup.intervalGroups.isEmpty()) {
+        item(key = "empty-${statusGroup.status.name}") {
+            Text(text = statusGroup.status.emptyText, style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 18.dp, bottom = 4.dp))
+        }
+    } else {
+        item(key = "collapse-all-${statusGroup.status.name}") {
+            TextButton(
+                onClick = { onSetIntervalsCollapsed(intervals, collapsedIntervals.intersect(intervals).size != intervals.size) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(if (collapsedIntervals.intersect(intervals).size == intervals.size) "Expand all" else "Collapse all")
+            }
+        }
+        statusGroup.intervalGroups.forEach { intervalGroup ->
+            val collapsed = intervalGroup.interval in collapsedIntervals
+            item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
+                Row(Modifier.fillMaxWidth().clickable { onToggleIntervalCollapsed(intervalGroup.interval) },
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Text(text = intervalGroup.interval, style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 18.dp, top = 2.dp, bottom = 2.dp))
+                    Spacer(Modifier.weight(1f))
+                    Text(if (collapsed) "+" else "-", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            if (!collapsed) {
+                items(intervalGroup.items, key = { it.perk.id }) { item ->
+                    PerkRow(item = item, onCheckedChange = { checked -> onToggleUsed(item.perk, checked) })
+                }
+            }
+        }
+    }
+}

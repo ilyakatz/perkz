@@ -115,6 +115,9 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     uiState = uiState,
                     onCardSelect = viewModel::selectCard,
                     onStatusSelect = viewModel::selectStatusFilter,
+                    onToggleStatusCollapsed = viewModel::toggleStatusCollapsed,
+                    onToggleIntervalCollapsed = viewModel::toggleIntervalCollapsed,
+                    onSetIntervalsCollapsed = viewModel::setIntervalsCollapsed,
                     onToggleUsed = viewModel::toggleUsed
                 )
                 AppTab.Settings -> SettingsTabContent(
@@ -131,4 +134,3 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
         }
     }
 }
-

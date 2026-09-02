@@ -10,6 +10,8 @@ data class UiState(
     val webhookUrl: String = "",
     val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val statusGroups: List<UiStatusGroup> = emptyList(),
+    val collapsedStatuses: Set<PerkStatus> = emptySet(),
+    val collapsedIntervals: Set<String> = emptySet(),
     val items: List<UiPerkItem> = emptyList(),
     val hasAnyPerks: Boolean = false,
     val availableCards: List<String> = emptyList(),
