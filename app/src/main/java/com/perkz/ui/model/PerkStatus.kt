@@ -44,6 +44,16 @@ enum class PerkStatus(
         darkCardColor = StatusNeedsUseCardDark,
         darkAccentColor = StatusNeedsUseAccentDark,
     ),
+    Upcoming(
+        label = "Upcoming",
+        badgeText = "UPCOMING",
+        titleColor = Color(0xFF5E35B1),
+        cardColor = Color(0xFFF3EEFF),
+        accentColor = Color(0xFF7E57C2),
+        emptyText = "No upcoming perks.",
+        darkCardColor = StatusNeedsUseCardDark,
+        darkAccentColor = StatusNeedsUseAccentDark,
+    ),
     Used(
         label = "Already used",
         badgeText = "USED",

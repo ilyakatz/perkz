@@ -117,7 +117,9 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 used -> PerkStatus.Used
                 isExpired(perk, today) -> PerkStatus.Expired
                 isExpiringSoon(perk, today) -> PerkStatus.ExpiringSoon
-                else -> PerkStatus.NeedsUse
+                periodKeyFor(perk, today) == "%04d-%02d".format(today.year, today.monthValue) ->
+                    PerkStatus.NeedsUse
+                else -> PerkStatus.Upcoming
             }
             UiPerkItem(
                 perk = perk,
@@ -311,7 +313,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     fun setIntervalsCollapsed(intervals: Set<String>, collapsed: Boolean) {
         viewModelScope.launch {
             getApplication<Application>().dataStore.edit { preferences ->
-                preferences[collapsedIntervalsKey] = if (collapsed) intervals.joinToString(",") else ""
+                val current = preferences[collapsedIntervalsKey].orEmpty()
+                    .split(',').filter { it.isNotBlank() }.toMutableSet()
+                if (collapsed) {
+                    current.addAll(intervals)
+                } else {
+                    current.removeAll(intervals)
+                }
+                preferences[collapsedIntervalsKey] = current.joinToString(",")
             }
         }
     }

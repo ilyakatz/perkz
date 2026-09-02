@@ -267,7 +267,7 @@ private fun LazyListScope.addStatusItems(
     onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit
 ) {
-    val intervals = statusGroup.intervalGroups.map { it.interval }.toSet()
+    val intervals = statusGroup.intervalGroups.map { "${statusGroup.status.name}|${it.interval}" }.toSet()
     if (statusGroup.intervalGroups.isEmpty()) {
         item(key = "empty-${statusGroup.status.name}") {
             Text(text = statusGroup.status.emptyText, style = MaterialTheme.typography.bodySmall,
@@ -284,9 +284,10 @@ private fun LazyListScope.addStatusItems(
             }
         }
         statusGroup.intervalGroups.forEach { intervalGroup ->
-            val collapsed = intervalGroup.interval in collapsedIntervals
+            val intervalKey = "${statusGroup.status.name}|${intervalGroup.interval}"
+            val collapsed = intervalKey in collapsedIntervals
             item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
-                Row(Modifier.fillMaxWidth().clickable { onToggleIntervalCollapsed(intervalGroup.interval) },
+                Row(Modifier.fillMaxWidth().clickable { onToggleIntervalCollapsed(intervalKey) },
                     verticalAlignment = Alignment.CenterVertically) {
                     Text(text = intervalGroup.interval, style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,

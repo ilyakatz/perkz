@@ -51,6 +51,9 @@ internal fun periodLabelFor(perk: PerkEntity, date: LocalDate): String {
 internal fun isExpiringSoon(perk: PerkEntity, date: LocalDate): Boolean {
     val expiry = expiryDateFor(perk, date) ?: return false
     val daysUntil = ChronoUnit.DAYS.between(date, expiry)
+    if (periodKeyFromResetPeriod(perk.resetPeriod, date) == date.format(DateTimeFormatter.ofPattern("yyyy-MM"))) {
+        return true
+    }
     return daysUntil in 0..expiringSoonThresholdDays(perk.interval)
 }
 
