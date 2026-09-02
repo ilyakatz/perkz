@@ -54,6 +54,11 @@ internal fun isExpiringSoon(perk: PerkEntity, date: LocalDate): Boolean {
     return daysUntil in 0..expiringSoonThresholdDays(perk.interval)
 }
 
+internal fun isExpired(perk: PerkEntity, date: LocalDate): Boolean {
+    val expiry = expiryDateFor(perk, date) ?: return false
+    return expiry.isBefore(date)
+}
+
 private fun expiringSoonThresholdDays(interval: String): Long {
     val normalized = interval.lowercase(Locale.US).replace("-", "").replace(" ", "")
     return when {

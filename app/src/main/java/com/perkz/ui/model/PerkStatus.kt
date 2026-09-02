@@ -53,6 +53,16 @@ enum class PerkStatus(
         emptyText = "No perks marked used yet.",
         darkCardColor = StatusUsedCardDark,
         darkAccentColor = StatusUsedAccentDark,
+    ),
+    Expired(
+        label = "Expired",
+        badgeText = "EXPIRED",
+        titleColor = Color(0xFF6D4C41),
+        cardColor = Color(0xFFF5EFED),
+        accentColor = Color(0xFF6D4C41),
+        emptyText = "No expired perks.",
+        darkCardColor = StatusExpiringSoonCardDark,
+        darkAccentColor = StatusExpiringSoonAccentDark,
     )
 }
 

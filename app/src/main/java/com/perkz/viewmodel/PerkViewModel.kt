@@ -16,6 +16,7 @@ import com.perkz.data.repository.PerkRepository
 import com.perkz.data.repository.ToggleSyncResult
 import com.perkz.domain.cardLabelForFilter
 import com.perkz.domain.isExpiringSoon
+import com.perkz.domain.isExpired
 import com.perkz.domain.periodKeyFor
 import com.perkz.domain.periodLabelFor
 import com.perkz.domain.prettyInterval
@@ -114,6 +115,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val used = usageKeys.contains(perk.id to key) || perk.usedFromSheet
             val statusItem = when {
                 used -> PerkStatus.Used
+                isExpired(perk, today) -> PerkStatus.Expired
                 isExpiringSoon(perk, today) -> PerkStatus.ExpiringSoon
                 else -> PerkStatus.NeedsUse
             }
