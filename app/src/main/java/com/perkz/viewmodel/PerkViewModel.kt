@@ -119,6 +119,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val maxAmount = parseAmount(perk.maxValueOrUses)
             val used = usageAmount > 0.0
             val statusItem = when {
+                maxAmount != null && usageAmount > 0.0 && usageAmount < maxAmount -> PerkStatus.PartiallyUsed
                 used -> PerkStatus.Used
                 isExpired(perk, today) -> PerkStatus.Expired
                 isExpiringSoon(perk, today) -> PerkStatus.ExpiringSoon

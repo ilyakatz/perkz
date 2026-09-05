@@ -54,6 +54,16 @@ enum class PerkStatus(
         darkCardColor = StatusNeedsUseCardDark,
         darkAccentColor = StatusNeedsUseAccentDark,
     ),
+    PartiallyUsed(
+        label = "Partially used",
+        badgeText = "PARTIALLY USED",
+        titleColor = Color(0xFF00695C),
+        cardColor = Color(0xFFE8F5F3),
+        accentColor = Color(0xFF00897B),
+        emptyText = "No partially used perks.",
+        darkCardColor = StatusUsedCardDark,
+        darkAccentColor = StatusUsedAccentDark,
+    ),
     Used(
         label = "Already used",
         badgeText = "USED",
