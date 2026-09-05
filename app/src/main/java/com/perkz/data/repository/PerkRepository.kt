@@ -51,7 +51,8 @@ class PerkRepository(private val dao: PerkDao) {
             }
             // Only clear and insert if we successfully parsed perks
             dao.clearPerks()
-            // Usage is local state and must survive a sheet refresh.
+            // The sheet is the source of truth when refreshed, including cleared Used values.
+            dao.clearUsage()
             dao.insertPerks(parsedPerks)
             Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
