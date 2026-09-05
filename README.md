@@ -56,39 +56,7 @@ To make checkbox toggles update your sheet, you need to create a Google Apps Scr
 4. Get your **Sheet ID** from your Google Sheet URL:
    - URL format: `https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit`
    - Copy just the `{SHEET_ID}` part
-5. In the `Code.gs` file, replace all code with this (add your sheet ID):
-
-```javascript
-// IMPORTANT: Replace with YOUR Google Sheet ID
-const ALLOWED_SHEET_ID = "YOUR_SHEET_ID_HERE";
-
-function doPost(e) {
-  const data = JSON.parse(e.postData.contents || "{}");
-  
-  // Security: Only allow updates to your specific sheet
-  if (data.sheetId !== ALLOWED_SHEET_ID) {
-    return ContentService.createTextOutput(JSON.stringify({ 
-      error: "Unauthorized sheet" 
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-  
-  const sheet = SpreadsheetApp.openById(data.sheetId).getSheetByName(
-    SpreadsheetApp.openById(data.sheetId).getSheets().find(s => String(s.getSheetId()) === String(data.gid)).getName()
-  );
-
-  const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const idxDateUsed = header.findIndex(h => String(h).trim().toLowerCase() === "date used") + 1;
-  const idxUsed = header.findIndex(h => String(h).trim().toLowerCase() === "used") + 1;
-  if (!idxDateUsed) throw new Error("Missing 'Date Used' column");
-
-  const row = Number(data.rowNumber);
-  sheet.getRange(row, idxDateUsed).setValue(data.checked ? data.dateUsed : "");
-  if (idxUsed) sheet.getRange(row, idxUsed).setValue(data.checked ? "yes" : "");
-
-  return ContentService.createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-```
+5. In the `Code.gs` file, replace all code with the contents of [`apps_script/Code.gs`](apps_script/Code.gs) (add your sheet ID):
 
 ### Step 2: Deploy as Web App
 

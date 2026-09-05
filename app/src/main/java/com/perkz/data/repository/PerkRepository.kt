@@ -69,7 +69,8 @@ class PerkRepository(private val dao: PerkDao) {
                     webhookUrl = webhookUrl,
                     sheetUrl = sheetUrl,
                     rowNumber = perk.sourceRowNumber,
-                    checked = checked
+                    checked = checked,
+                    usedValue = perk.maxValueOrUses
                 )
             }
         } else if (checked) {
@@ -99,7 +100,8 @@ private fun updateSheetViaWebhook(
     webhookUrl: String,
     sheetUrl: String,
     rowNumber: Int,
-    checked: Boolean
+    checked: Boolean,
+    usedValue: String
 ) {
     val sheetId = Regex("/d/([a-zA-Z0-9-_]+)")
         .find(sheetUrl)
@@ -117,7 +119,7 @@ private fun updateSheetViaWebhook(
         ""
     }
     val body = """
-        {"sheetId":"${jsonEscape(sheetId)}","gid":"${jsonEscape(gid)}","rowNumber":$rowNumber,"checked":$checked,"dateUsed":"${jsonEscape(dateUsed)}"}
+        {"sheetId":"${jsonEscape(sheetId)}","gid":"${jsonEscape(gid)}","rowNumber":$rowNumber,"checked":$checked,"dateUsed":"${jsonEscape(dateUsed)}","usedValue":"${jsonEscape(usedValue)}"}
     """.trimIndent()
 
     try {
@@ -127,6 +129,7 @@ private fun updateSheetViaWebhook(
             setRequestProperty("Content-Type", "application/json; charset=utf-8")
             connectTimeout = 10_000
             readTimeout = 10_000
+            instanceFollowRedirects = true
         }
         connection.outputStream.use { stream ->
             stream.write(body.toByteArray(Charsets.UTF_8))
@@ -137,7 +140,7 @@ private fun updateSheetViaWebhook(
             throw IllegalStateException("Webhook update failed ($code): $errorText")
         }
         val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-        if (responseText.isNotBlank() && !responseText.contains("\"ok\":true")) {
+        if (responseText.isNotBlank() && !Regex("\"ok\"\\s*:\\s*true").containsMatchIn(responseText)) {
             throw IllegalStateException("Webhook did not confirm success: $responseText")
         }
     } catch (e: Exception) {
