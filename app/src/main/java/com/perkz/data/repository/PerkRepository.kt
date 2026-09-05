@@ -23,6 +23,13 @@ class PerkRepository(private val dao: PerkDao) {
 
     fun observeUsage(): Flow<List<UsageEntity>> = dao.observeUsage()
 
+    suspend fun currentUsageAmount(perk: PerkEntity): Double {
+        val periodKey = periodKeyFor(perk, LocalDate.now())
+        return dao.getUsage(perk.id, periodKey)?.amount
+            ?: perk.usedAmountFromSheet
+            ?: if (perk.usedFromSheet) com.perkz.domain.parseAmount(perk.maxValueOrUses) ?: 1.0 else 0.0
+    }
+
     suspend fun refresh(sheetUrl: String) {
         // Add cache-busting query parameter to bypass Google's CDN cache
         val cacheBustUrl = if (sheetUrl.contains("?")) {
@@ -44,8 +51,7 @@ class PerkRepository(private val dao: PerkDao) {
             }
             // Only clear and insert if we successfully parsed perks
             dao.clearPerks()
-            // The sheet is the source of truth after a successful refresh.
-            dao.clearUsage()
+            // Usage is local state and must survive a sheet refresh.
             dao.insertPerks(parsedPerks)
             Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
@@ -60,30 +66,50 @@ class PerkRepository(private val dao: PerkDao) {
         sheetUrl: String,
         webhookUrl: String
     ): ToggleSyncResult {
-        updateLocalUsed(perk, checked)
+        val amount = if (checked) {
+            com.perkz.domain.parseAmount(perk.maxValueOrUses) ?: 1.0
+        } else {
+            0.0
+        }
+        return setUsedAmount(perk, amount, sheetUrl, webhookUrl)
+    }
 
-        val hasWebhook = webhookUrl.isNotBlank()
+    suspend fun setUsedAmount(
+        perk: PerkEntity,
+        amount: Double,
+        sheetUrl: String? = null,
+        webhookUrl: String? = null
+    ): ToggleSyncResult {
+        val periodKey = periodKeyFor(perk, LocalDate.now())
+        if (amount > 0.0) {
+            dao.upsertUsage(UsageEntity(perkId = perk.id, periodKey = periodKey, amount = amount))
+        } else {
+            dao.deleteUsage(perk.id, periodKey)
+        }
+        dao.updateUsedFromSheet(perk.id, amount > 0.0)
+
+        val hasWebhook = !webhookUrl.isNullOrBlank()
         if (hasWebhook) {
             withContext(Dispatchers.IO) {
                 updateSheetViaWebhook(
-                    webhookUrl = webhookUrl,
-                    sheetUrl = sheetUrl,
+                    webhookUrl = webhookUrl!!,
+                    sheetUrl = sheetUrl.orEmpty(),
                     rowNumber = perk.sourceRowNumber,
-                    checked = checked,
-                    usedValue = perk.maxValueOrUses
+                    checked = amount > 0.0,
+                    usedValue = amount.toString()
                 )
             }
-        } else if (checked) {
+        } else if (amount > 0.0 && sheetUrl != null) {
             throw IllegalStateException("Set 'Update webhook URL (Apps Script)' in Settings first.")
         }
-
         return if (hasWebhook) ToggleSyncResult.SyncedToSheet else ToggleSyncResult.LocalOnly
     }
 
     suspend fun updateLocalUsed(perk: PerkEntity, checked: Boolean) {
         val periodKey = periodKeyFor(perk, LocalDate.now())
         if (checked) {
-            dao.upsertUsage(UsageEntity(perkId = perk.id, periodKey = periodKey))
+            val amount = com.perkz.domain.parseAmount(perk.maxValueOrUses) ?: 1.0
+            dao.upsertUsage(UsageEntity(perkId = perk.id, periodKey = periodKey, amount = amount))
         } else {
             dao.deleteUsage(perk.id, periodKey)
         }

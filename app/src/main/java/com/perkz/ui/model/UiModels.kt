@@ -35,6 +35,8 @@ data class UiIntervalGroup(
 data class UiPerkItem(
     val perk: PerkEntity,
     val isUsedThisPeriod: Boolean,
+    val usedAmount: Double,
+    val maxAmount: Double?,
     val periodLabel: String,
     val resetPeriodLabel: String,
     val status: PerkStatus

@@ -118,7 +118,8 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     onToggleStatusCollapsed = viewModel::toggleStatusCollapsed,
                     onToggleIntervalCollapsed = viewModel::toggleIntervalCollapsed,
                     onSetIntervalsCollapsed = viewModel::setIntervalsCollapsed,
-                    onToggleUsed = viewModel::toggleUsed
+                    onToggleUsed = viewModel::toggleUsed,
+                    onAmountAdded = viewModel::addUsage
                 )
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,

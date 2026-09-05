@@ -14,5 +14,6 @@ data class PerkEntity(
     val deadlineTrigger: String,
     val maxValueOrUses: String,
     val details: String,
-    val usedFromSheet: Boolean
+    val usedFromSheet: Boolean,
+    val usedAmountFromSheet: Double?
 )

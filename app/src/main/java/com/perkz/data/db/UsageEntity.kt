@@ -5,5 +5,6 @@ import androidx.room.Entity
 @Entity(tableName = "usage", primaryKeys = ["perkId", "periodKey"])
 data class UsageEntity(
     val perkId: String,
-    val periodKey: String
+    val periodKey: String,
+    val amount: Double
 )

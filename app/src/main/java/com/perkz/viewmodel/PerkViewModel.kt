@@ -15,6 +15,7 @@ import com.perkz.data.db.PerkEntity
 import com.perkz.data.repository.PerkRepository
 import com.perkz.data.repository.ToggleSyncResult
 import com.perkz.domain.cardLabelForFilter
+import com.perkz.domain.parseAmount
 import com.perkz.domain.isExpiringSoon
 import com.perkz.domain.isExpired
 import com.perkz.domain.periodKeyFor
@@ -109,10 +110,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         val (selectedCard, selectedStatusFilter) = filters
         val (loading, message) = status
         val today = LocalDate.now()
-        val usageKeys = usage.map { it.perkId to it.periodKey }.toSet()
+        val usageByKey = usage.associateBy { it.perkId to it.periodKey }
         val items = perks.map { perk ->
             val key = periodKeyFor(perk, today)
-            val used = usageKeys.contains(perk.id to key) || perk.usedFromSheet
+            val usageAmount = usageByKey[perk.id to key]?.amount
+                ?: perk.usedAmountFromSheet
+                ?: if (perk.usedFromSheet) parseAmount(perk.maxValueOrUses) ?: 1.0 else 0.0
+            val maxAmount = parseAmount(perk.maxValueOrUses)
+            val used = usageAmount > 0.0
             val statusItem = when {
                 used -> PerkStatus.Used
                 isExpired(perk, today) -> PerkStatus.Expired
@@ -124,6 +129,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             UiPerkItem(
                 perk = perk,
                 isUsedThisPeriod = used,
+                usedAmount = usageAmount,
+                maxAmount = maxAmount,
                 periodLabel = periodLabelFor(perk, today),
                 resetPeriodLabel = perk.resetPeriod.trim(),
                 status = statusItem
@@ -250,6 +257,26 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (error: Exception) {
                 repository.updateLocalUsed(perk, perk.usedFromSheet)
+                messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
+            }
+        }
+    }
+
+    fun addUsage(perk: PerkEntity, amountToAdd: Double) {
+        if (amountToAdd <= 0.0) return
+        viewModelScope.launch {
+            try {
+                val existingAmount = repository.currentUsageAmount(perk)
+                val result = repository.setUsedAmount(
+                    perk = perk,
+                    amount = existingAmount + amountToAdd,
+                    sheetUrl = uiState.value.sheetUrl,
+                    webhookUrl = uiState.value.webhookUrl
+                )
+                if (result == ToggleSyncResult.LocalOnly) {
+                    messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                }
+            } catch (error: Exception) {
                 messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
             }
         }

@@ -78,7 +78,9 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
         val details = row.valueAt(detailsIndex).trim()
         val usedValue = if (usedIndex >= 0) row.valueAt(usedIndex) else ""
         val dateUsedValue = if (dateUsedIndex >= 0) row.valueAt(dateUsedIndex) else ""
-        val usedFromSheet = isMarkedUsedInSheet(usedValue, dateUsedValue)
+        val usedAmountFromSheet = parseNumericUsedAmount(usedValue)
+        val usedFromSheet = usedAmountFromSheet?.let { it > 0.0 }
+            ?: isMarkedUsedInSheet(usedValue, dateUsedValue)
         val id = stableIdFrom("$title|$card|$interval|$resetPeriod|$deadlineTrigger|$maxValueOrUses|$details")
         PerkEntity(
             id = id,
@@ -90,7 +92,8 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
             deadlineTrigger = deadlineTrigger,
             maxValueOrUses = maxValueOrUses,
             details = details,
-            usedFromSheet = usedFromSheet
+            usedFromSheet = usedFromSheet,
+            usedAmountFromSheet = usedAmountFromSheet
         )
     }
 }
@@ -172,4 +175,24 @@ private fun isMarkedUsedInSheet(usedValue: String, dateUsedValue: String): Boole
         normalized == "n/a" || normalized == "na" -> false
         else -> false // Default to NOT used for any other value
     }
+
+}
+
+private fun parseNumericUsedAmount(value: String): Double? {
+    val raw = value.trim()
+    if (raw.isBlank()) return null
+
+    val normalized = raw
+        .replace("$", "")
+        .replace("€", "")
+        .replace("£", "")
+        .replace(" ", "")
+    val number = when {
+        normalized.contains(',') && normalized.contains('.') ->
+            normalized.replace(",", "")
+        normalized.contains(',') ->
+            normalized.replace(',', '.')
+        else -> normalized
+    }.toDoubleOrNull()
+    return number?.takeIf { it >= 0.0 }
 }

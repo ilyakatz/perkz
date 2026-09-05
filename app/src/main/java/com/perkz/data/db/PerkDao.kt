@@ -26,9 +26,12 @@ interface PerkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertUsage(usage: UsageEntity)
 
+    @Query("SELECT * FROM usage WHERE perkId = :perkId AND periodKey = :periodKey")
+    suspend fun getUsage(perkId: String, periodKey: String): UsageEntity?
+
     @Query("DELETE FROM usage WHERE perkId = :perkId AND periodKey = :periodKey")
     suspend fun deleteUsage(perkId: String, periodKey: String)
 
-    @Query("UPDATE perks SET usedFromSheet = :usedFromSheet WHERE id = :perkId")
+    @Query("UPDATE perks SET usedFromSheet = :usedFromSheet, usedAmountFromSheet = NULL WHERE id = :perkId")
     suspend fun updateUsedFromSheet(perkId: String, usedFromSheet: Boolean)
 }

@@ -16,9 +16,16 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,9 +33,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.perkz.ui.model.UiPerkItem
 import com.perkz.ui.model.resolvedColors
+import com.perkz.domain.formatAmount
+import com.perkz.domain.parseAmount
 
 @Composable
-internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
+internal fun PerkRow(
+    item: UiPerkItem,
+    onCheckedChange: (Boolean) -> Unit,
+    onAmountAdded: (Double) -> Unit
+) {
+    var showAmountDialog by remember { mutableStateOf(false) }
+    var amountText by remember { mutableStateOf("") }
     val colors = item.status.resolvedColors()
     // onCard* colors are derived from the scheme so they adapt to card luminance
     val onCardPrimary = MaterialTheme.colorScheme.onSurface
@@ -63,7 +78,16 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
             ) {
                 Checkbox(
                     checked = item.isUsedThisPeriod,
-                    onCheckedChange = onCheckedChange,
+                    onCheckedChange = { checked ->
+                        if (checked) {
+                            amountText = item.maxAmount?.let { max ->
+                                formatAmount((max - item.usedAmount).coerceAtLeast(0.0))
+                            } ?: "1"
+                            showAmountDialog = true
+                        } else {
+                            onCheckedChange(false)
+                        }
+                    },
                     modifier = Modifier.padding(top = 0.dp),
                     colors = CheckboxDefaults.colors(
                         checkedColor = colors.accentColor,
@@ -131,6 +155,16 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                                     valueColor = onCardPrimary,
                                 )
                             }
+                            if (item.maxAmount != null || item.usedAmount > 0.0) {
+                                PerkMetaItem(
+                                    label = "USED",
+                                    value = item.maxAmount?.let {
+                                        "${formatAmount(item.usedAmount)} / ${formatAmount(it)}"
+                                    } ?: formatAmount(item.usedAmount),
+                                    labelColor = onCardSecondary,
+                                    valueColor = onCardPrimary,
+                                )
+                            }
                             if (hasReset) {
                                 PerkMetaItem(
                                     label = "RESETS",
@@ -139,11 +173,94 @@ internal fun PerkRow(item: UiPerkItem, onCheckedChange: (Boolean) -> Unit) {
                                     valueColor = onCardPrimary,
                                 )
                             }
+
                             PerkMetaItem(
                                 label = "PERIOD",
                                 value = item.periodLabel,
                                 labelColor = onCardSecondary,
                                 valueColor = onCardPrimary,
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (item.maxAmount != null) {
+                                val remaining = (item.maxAmount - item.usedAmount).coerceAtLeast(0.0)
+                                Text(
+                                    text = "${formatAmount(remaining)} remaining",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = onCardSecondary,
+                                    modifier = Modifier.weight(1f)
+                                )
+                            } else {
+                                Spacer(Modifier.weight(1f))
+                            }
+                            TextButton(
+                                onClick = {
+                                    amountText = item.maxAmount?.let { max ->
+                                        formatAmount((max - item.usedAmount).coerceAtLeast(0.0))
+                                    } ?: "1"
+                                    showAmountDialog = true
+                                }
+                            ) {
+                                Text(
+                                    text = if (item.usedAmount > 0.0) "Add amount" else "Use amount",
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+
+                        if (showAmountDialog) {
+                            val enteredAmount = parseAmount(amountText)
+                            val remaining = item.maxAmount?.minus(item.usedAmount)
+                            val exceedsRemaining = remaining != null && enteredAmount != null && enteredAmount > remaining
+                            AlertDialog(
+                                onDismissRequest = { showAmountDialog = false },
+                                title = { Text(if (item.usedAmount > 0.0) "Add perk usage" else "Use perk") },
+                                text = {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Text(
+                                            text = if (item.usedAmount > 0.0) {
+                                                "Used ${formatAmount(item.usedAmount)}${item.maxAmount?.let { " of ${formatAmount(it)}" } ?: ""}. Enter the additional amount."
+                                            } else {
+                                                "Enter the amount you used."
+                                            },
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                        OutlinedTextField(
+                                            value = amountText,
+                                            onValueChange = { amountText = it },
+                                            label = { Text("Amount") },
+                                            singleLine = true,
+                                            isError = enteredAmount == null && amountText.isNotBlank() || exceedsRemaining
+                                        )
+                                        if (exceedsRemaining) {
+                                            Text(
+                                                text = "Only ${formatAmount(remaining!!)} remaining.",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.error
+                                            )
+                                        }
+                                    }
+                                },
+                                confirmButton = {
+                                    TextButton(
+                                        enabled = enteredAmount != null && enteredAmount > 0.0 && !exceedsRemaining,
+                                        onClick = {
+                                            onAmountAdded(enteredAmount!!)
+                                            amountText = ""
+                                            showAmountDialog = false
+                                        }
+                                    ) { Text("Save") }
+                                },
+                                dismissButton = {
+                                    TextButton(onClick = { showAmountDialog = false }) { Text("Cancel") }
+                                }
                             )
                         }
                     }
@@ -193,4 +310,3 @@ private fun PerkMetaItem(
         )
     }
 }
-
