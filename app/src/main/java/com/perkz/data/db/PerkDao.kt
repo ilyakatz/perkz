@@ -34,4 +34,5 @@ interface PerkDao {
 
     @Query("UPDATE perks SET usedFromSheet = :usedFromSheet, usedAmountFromSheet = NULL WHERE id = :perkId")
     suspend fun updateUsedFromSheet(perkId: String, usedFromSheet: Boolean)
+
 }

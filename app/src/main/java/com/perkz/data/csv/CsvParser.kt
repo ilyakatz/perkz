@@ -79,8 +79,13 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
         val usedValue = if (usedIndex >= 0) row.valueAt(usedIndex) else ""
         val dateUsedValue = if (dateUsedIndex >= 0) row.valueAt(dateUsedIndex) else ""
         val usedAmountFromSheet = parseNumericUsedAmount(usedValue)
-        val usedFromSheet = usedAmountFromSheet?.let { it > 0.0 }
-            ?: isMarkedUsedInSheet(usedValue, dateUsedValue)
+        val isNotApplicable = isMarkedNotApplicable(usedValue)
+        val usedFromSheet = if (isNotApplicable) {
+            false
+        } else {
+            usedAmountFromSheet?.let { it > 0.0 }
+                ?: isMarkedUsedInSheet(usedValue, dateUsedValue)
+        }
         val id = stableIdFrom("$title|$card|$interval|$resetPeriod|$deadlineTrigger|$maxValueOrUses|$details")
         PerkEntity(
             id = id,
@@ -93,7 +98,8 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
             maxValueOrUses = maxValueOrUses,
             details = details,
             usedFromSheet = usedFromSheet,
-            usedAmountFromSheet = usedAmountFromSheet
+            usedAmountFromSheet = usedAmountFromSheet,
+            isNotApplicable = isNotApplicable
         )
     }
 }
@@ -177,6 +183,10 @@ private fun isMarkedUsedInSheet(usedValue: String, dateUsedValue: String): Boole
     }
 
 }
+
+private fun isMarkedNotApplicable(usedValue: String): Boolean =
+    usedValue.trim().equals("N/A", ignoreCase = true) ||
+        usedValue.trim().equals("NA", ignoreCase = true)
 
 private fun parseNumericUsedAmount(value: String): Double? {
     val raw = value.trim()

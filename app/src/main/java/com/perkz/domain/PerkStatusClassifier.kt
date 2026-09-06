@@ -14,6 +14,7 @@ internal fun classifyPerkStatus(
     date: LocalDate,
     usageAmount: Double
 ): PerkStatus {
+    if (perk.isNotApplicable) return PerkStatus.NotApplicable
     val maxAmount = parseAmount(perk.maxValueOrUses)
     val used = usageAmount > 0.0
     return when {

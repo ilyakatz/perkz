@@ -271,6 +271,26 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
             }
         }
+
+    }
+
+    fun setNotApplicable(perk: PerkEntity, notApplicable: Boolean) {
+        viewModelScope.launch {
+            try {
+                repository.setNotApplicable(
+                    perk = perk,
+                    notApplicable = notApplicable,
+                    sheetUrl = uiState.value.sheetUrl,
+                    webhookUrl = uiState.value.webhookUrl
+                ).also { result ->
+                    if (result == ToggleSyncResult.LocalOnly) {
+                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                    }
+                }
+            } catch (error: Exception) {
+                messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
+            }
+        }
     }
 
     fun clearMessage() {

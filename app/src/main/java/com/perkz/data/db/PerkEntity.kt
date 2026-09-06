@@ -15,5 +15,6 @@ data class PerkEntity(
     val maxValueOrUses: String,
     val details: String,
     val usedFromSheet: Boolean,
-    val usedAmountFromSheet: Double?
+    val usedAmountFromSheet: Double?,
+    val isNotApplicable: Boolean = false
 )

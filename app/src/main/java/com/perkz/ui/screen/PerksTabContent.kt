@@ -48,7 +48,8 @@ internal fun PerksTabContent(
     onToggleIntervalCollapsed: (String) -> Unit,
     onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit,
-    onAmountAdded: (PerkEntity, Double) -> Unit
+    onAmountAdded: (PerkEntity, Double) -> Unit,
+    onNotApplicableChange: (PerkEntity, Boolean) -> Unit
 ) {
     if (uiState.sheetUrl.isBlank()) {
         WelcomeState()
@@ -74,7 +75,8 @@ internal fun PerksTabContent(
                 onToggleIntervalCollapsed = onToggleIntervalCollapsed,
                 onSetIntervalsCollapsed = onSetIntervalsCollapsed,
                 onToggleUsed = onToggleUsed,
-                onAmountAdded = onAmountAdded
+                onAmountAdded = onAmountAdded,
+                onNotApplicableChange = onNotApplicableChange
             )
         }
     }
@@ -220,7 +222,8 @@ private fun PerkList(
     onToggleIntervalCollapsed: (String) -> Unit,
     onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit,
-    onAmountAdded: (PerkEntity, Double) -> Unit
+    onAmountAdded: (PerkEntity, Double) -> Unit,
+    onNotApplicableChange: (PerkEntity, Boolean) -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -267,7 +270,8 @@ private fun PerkList(
                     onToggleIntervalCollapsed,
                     onSetIntervalsCollapsed,
                     onToggleUsed,
-                    onAmountAdded
+                    onAmountAdded,
+                    onNotApplicableChange
                 )
             }
         }
@@ -282,7 +286,8 @@ private fun LazyListScope.addStatusItems(
     onToggleIntervalCollapsed: (String) -> Unit,
     onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit,
-    onAmountAdded: (PerkEntity, Double) -> Unit
+    onAmountAdded: (PerkEntity, Double) -> Unit,
+    onNotApplicableChange: (PerkEntity, Boolean) -> Unit
 ) {
     val intervals = statusGroup.intervalGroups.map { "${statusGroup.status.name}|${it.interval}" }.toSet()
     if (statusGroup.intervalGroups.isEmpty()) {
@@ -318,7 +323,8 @@ private fun LazyListScope.addStatusItems(
                     PerkRow(
                         item = item,
                         onCheckedChange = { checked -> onToggleUsed(item.perk, checked) },
-                        onAmountAdded = { amount -> onAmountAdded(item.perk, amount) }
+                        onAmountAdded = { amount -> onAmountAdded(item.perk, amount) },
+                        onNotApplicableChange = { value -> onNotApplicableChange(item.perk, value) }
                     )
                 }
             }

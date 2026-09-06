@@ -116,6 +116,42 @@ class PerkRepository(private val dao: PerkDao) {
         }
         dao.updateUsedFromSheet(perk.id, checked)
     }
+
+    suspend fun setNotApplicable(
+        perk: PerkEntity,
+        notApplicable: Boolean,
+        sheetUrl: String? = null,
+        webhookUrl: String? = null
+    ): ToggleSyncResult {
+        if (notApplicable) {
+            dao.deleteUsage(perk.id, periodKeyFor(perk, LocalDate.now()))
+        }
+        dao.insertPerks(
+            listOf(
+                perk.copy(
+                    usedFromSheet = false,
+                    usedAmountFromSheet = null,
+                    isNotApplicable = notApplicable
+                )
+            )
+        )
+
+        val hasWebhook = !webhookUrl.isNullOrBlank()
+        if (hasWebhook) {
+            withContext(Dispatchers.IO) {
+                updateSheetViaWebhook(
+                    webhookUrl = webhookUrl!!,
+                    sheetUrl = sheetUrl.orEmpty(),
+                    rowNumber = perk.sourceRowNumber,
+                    checked = false,
+                    usedValue = if (notApplicable) "N/A" else ""
+                )
+            }
+        } else if (sheetUrl != null) {
+            throw IllegalStateException("Set 'Update webhook URL (Apps Script)' in Settings first.")
+        }
+        return if (hasWebhook) ToggleSyncResult.SyncedToSheet else ToggleSyncResult.LocalOnly
+    }
 }
 
 enum class ToggleSyncResult {

@@ -22,7 +22,7 @@ function doPost(e) {
 
   const row = Number(data.rowNumber);
   sheet.getRange(row, idxDateUsed).setValue(data.checked ? data.dateUsed : "");
-  if (idxUsed) sheet.getRange(row, idxUsed).setValue(data.checked ? data.usedValue : "");
+  if (idxUsed) sheet.getRange(row, idxUsed).setValue(data.usedValue || "");
 
   return ContentService.createTextOutput(JSON.stringify({ ok: true }))
     .setMimeType(ContentService.MimeType.JSON);

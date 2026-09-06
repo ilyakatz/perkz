@@ -40,7 +40,8 @@ import com.perkz.domain.parseAmount
 internal fun PerkRow(
     item: UiPerkItem,
     onCheckedChange: (Boolean) -> Unit,
-    onAmountAdded: (Double) -> Unit
+    onAmountAdded: (Double) -> Unit,
+    onNotApplicableChange: (Boolean) -> Unit
 ) {
     var showAmountDialog by remember { mutableStateOf(false) }
     var amountText by remember { mutableStateOf("") }
@@ -76,25 +77,27 @@ internal fun PerkRow(
                     .padding(start = 10.dp, end = 12.dp, top = 10.dp, bottom = 10.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Checkbox(
-                    checked = item.isUsedThisPeriod,
-                    onCheckedChange = { checked ->
-                        if (checked) {
-                            amountText = item.maxAmount?.let { max ->
-                                formatAmount((max - item.usedAmount).coerceAtLeast(0.0))
-                            } ?: "1"
-                            showAmountDialog = true
-                        } else {
-                            onCheckedChange(false)
-                        }
-                    },
-                    modifier = Modifier.padding(top = 0.dp),
-                    colors = CheckboxDefaults.colors(
-                        checkedColor = colors.accentColor,
-                        uncheckedColor = colors.accentColor.copy(alpha = 0.7f),
-                        checkmarkColor = colors.cardColor,
+                if (item.status != com.perkz.ui.model.PerkStatus.NotApplicable) {
+                    Checkbox(
+                        checked = item.isUsedThisPeriod,
+                        onCheckedChange = { checked ->
+                            if (checked) {
+                                amountText = item.maxAmount?.let { max ->
+                                    formatAmount((max - item.usedAmount).coerceAtLeast(0.0))
+                                } ?: "1"
+                                showAmountDialog = true
+                            } else {
+                                onCheckedChange(false)
+                            }
+                        },
+                        modifier = Modifier.padding(top = 0.dp),
+                        colors = CheckboxDefaults.colors(
+                            checkedColor = colors.accentColor,
+                            uncheckedColor = colors.accentColor.copy(alpha = 0.7f),
+                            checkmarkColor = colors.cardColor,
+                        )
                     )
-                )
+                }
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -199,7 +202,7 @@ internal fun PerkRow(
                             } else {
                                 Spacer(Modifier.weight(1f))
                             }
-                            TextButton(
+                            if (item.status != com.perkz.ui.model.PerkStatus.NotApplicable) TextButton(
                                 onClick = {
                                     amountText = item.maxAmount?.let { max ->
                                         formatAmount((max - item.usedAmount).coerceAtLeast(0.0))
@@ -281,6 +284,21 @@ internal fun PerkRow(
                             style = MaterialTheme.typography.bodySmall,
                             color = onCardSecondary,
                             modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+
+                    TextButton(
+                        onClick = {
+                            onNotApplicableChange(item.status != com.perkz.ui.model.PerkStatus.NotApplicable)
+                        },
+                        modifier = Modifier.align(Alignment.Start)
+                    ) {
+                        Text(
+                            text = if (item.status == com.perkz.ui.model.PerkStatus.NotApplicable) {
+                                "Restore perk"
+                            } else {
+                                "Not applicable"
+                            }
                         )
                     }
                 }
