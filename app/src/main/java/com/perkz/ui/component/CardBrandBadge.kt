@@ -28,7 +28,11 @@ import androidx.compose.ui.unit.sp
  * WCAG AA contrast; Barclays (light cyan) uses near-black text instead.
  */
 @Composable
-internal fun CardBrandBadge(cardName: String, modifier: Modifier = Modifier) {
+internal fun CardBrandBadge(
+    cardName: String,
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 30.dp
+) {
     val brand = resolveCardBrand(
         cardName = cardName,
         fallbackBg = MaterialTheme.colorScheme.primary,
@@ -41,7 +45,7 @@ internal fun CardBrandBadge(cardName: String, modifier: Modifier = Modifier) {
     }
     Box(
         modifier = modifier
-            .size(30.dp)
+            .size(size)
             .clip(RoundedCornerShape(6.dp))
             .background(brand.bgColor),
         contentAlignment = Alignment.Center,

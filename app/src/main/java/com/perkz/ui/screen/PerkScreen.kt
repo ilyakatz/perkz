@@ -1,24 +1,26 @@
 package com.perkz.ui.screen
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +30,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.text.font.FontWeight
 import com.perkz.viewmodel.PerkViewModel
 
 private enum class AppTab { Perks, Settings }
@@ -49,30 +54,42 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
-            TopAppBar(
-                title = {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .background(MaterialTheme.colorScheme.surface)
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                ) {
+                    Text("Perkz", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Text(
-                        text = "Perkz",
-                        style = MaterialTheme.typography.titleLarge
+                        "Card perks, fully yours.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                },
-                actions = {
-                    if (selectedTab == AppTab.Perks) {
+                }
+                if (selectedTab == AppTab.Perks) {
+                    Row(
+                        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = viewModel::refresh) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh perks"
-                            )
+                            Icon(Icons.Default.Refresh, contentDescription = "Refresh perks")
                         }
+                        Text(
+                            if (uiState.isLoading) "Syncing…" else uiState.syncLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface,
-                    titleContentColor = MaterialTheme.colorScheme.onSurface,
-                    actionIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            )
+                }
+            }
         },
         bottomBar = {
             NavigationBar(
@@ -84,11 +101,18 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     onClick = { selectedTab = AppTab.Perks },
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.Star,
+                            imageVector = Icons.Default.GridView,
                             contentDescription = "Perks"
                         )
                     },
-                    label = { Text("Perks") }
+                    label = { Text("Perks") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
                 NavigationBarItem(
                     selected = selectedTab == AppTab.Settings,
@@ -99,7 +123,14 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                             contentDescription = "Settings"
                         )
                     },
-                    label = { Text("Settings") }
+                    label = { Text("Settings") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 )
             }
         },
@@ -114,18 +145,24 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                 AppTab.Perks -> PerksTabContent(
                     uiState = uiState,
                     onCardSelect = viewModel::selectCard,
-                    onStatusSelect = viewModel::selectStatusFilter,
+                    onStatusPresetSelect = viewModel::selectStatusPreset,
+                    onApplyFilters = viewModel::applyFilters,
+                    onClearFilters = viewModel::clearFilters,
                     onToggleStatusCollapsed = viewModel::toggleStatusCollapsed,
                     onToggleIntervalCollapsed = viewModel::toggleIntervalCollapsed,
                     onSetIntervalsCollapsed = viewModel::setIntervalsCollapsed,
                     onToggleUsed = viewModel::toggleUsed,
                     onAmountAdded = viewModel::addUsage,
+                    onMarkFull = viewModel::markFull,
+                    onClearUsage = viewModel::clearUsage,
                     onNotApplicableChange = viewModel::setNotApplicable
                 )
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,
                     webhookInput = webhookInput,
                     selectedThemeMode = uiState.themeMode,
+                    isLoading = uiState.isLoading,
+                    syncError = uiState.syncError,
                     onUrlChange = { urlInput = it },
                     onWebhookChange = { webhookInput = it },
                     onThemeModeChange = viewModel::saveThemeMode,
