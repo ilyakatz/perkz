@@ -64,8 +64,8 @@ class PerkRepository(private val dao: PerkDao) {
     suspend fun setUsed(
         perk: PerkEntity,
         checked: Boolean,
-        sheetUrl: String,
-        webhookUrl: String
+        sheetUrl: String? = null,
+        webhookUrl: String? = null
     ): ToggleSyncResult {
         val amount = if (checked) {
             com.perkz.domain.parseAmount(perk.maxValueOrUses) ?: 1.0

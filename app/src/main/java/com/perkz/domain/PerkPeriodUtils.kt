@@ -35,12 +35,12 @@ private fun periodKeyFromResetPeriod(resetPeriod: String, date: LocalDate): Stri
     if (raw.isBlank()) return null
     val normalized = raw.lowercase(Locale.US)
 
-    monthFromText(normalized)?.let { month ->
-        return "%04d-%02d".format(date.year, month)
-    }
     if (normalized.contains("jan") && normalized.contains("jun")) return "${date.year}-H1"
     if (normalized.contains("jul") && normalized.contains("dec")) return "${date.year}-H2"
     if (normalized.contains("calendar year")) return date.year.toString()
+    monthFromText(normalized)?.let { month ->
+        return "%04d-%02d".format(date.year, month)
+    }
     return null
 }
 

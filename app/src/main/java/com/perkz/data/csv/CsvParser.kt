@@ -188,8 +188,13 @@ private fun parseNumericUsedAmount(value: String): Double? {
         .replace("£", "")
         .replace(" ", "")
     val number = when {
-        normalized.contains(',') && normalized.contains('.') ->
-            normalized.replace(",", "")
+        normalized.contains(',') && normalized.contains('.') -> {
+            if (normalized.lastIndexOf(',') > normalized.lastIndexOf('.')) {
+                normalized.replace(".", "").replace(',', '.')
+            } else {
+                normalized.replace(",", "")
+            }
+        }
         normalized.contains(',') ->
             normalized.replace(',', '.')
         else -> normalized

@@ -16,11 +16,11 @@ import com.perkz.data.repository.PerkRepository
 import com.perkz.data.repository.ToggleSyncResult
 import com.perkz.domain.cardLabelForFilter
 import com.perkz.domain.parseAmount
-import com.perkz.domain.isExpiringSoon
-import com.perkz.domain.isExpired
 import com.perkz.domain.periodKeyFor
 import com.perkz.domain.periodLabelFor
 import com.perkz.domain.prettyInterval
+import com.perkz.domain.classifyPerkStatus
+import com.perkz.domain.usageAmountFor
 import com.perkz.ui.model.ALL_CARDS_FILTER
 import com.perkz.ui.model.ALL_STATUSES_FILTER
 import com.perkz.ui.model.PerkStatus
@@ -113,21 +113,10 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         val usageByKey = usage.associateBy { it.perkId to it.periodKey }
         val items = perks.map { perk ->
             val key = periodKeyFor(perk, today)
-            val usageAmount = usageByKey[perk.id to key]?.amount
-                ?: perk.usedAmountFromSheet
-                ?: if (perk.usedFromSheet) parseAmount(perk.maxValueOrUses) ?: 1.0 else 0.0
+            val usageAmount = usageAmountFor(perk, usageByKey[perk.id to key]?.amount)
             val maxAmount = parseAmount(perk.maxValueOrUses)
             val used = usageAmount > 0.0
-            val statusItem = when {
-                maxAmount != null && usageAmount >= maxAmount -> PerkStatus.Used
-                isExpired(perk, today) -> PerkStatus.Expired
-                maxAmount != null && usageAmount > 0.0 && usageAmount < maxAmount -> PerkStatus.PartiallyUsed
-                used -> PerkStatus.Used
-                isExpiringSoon(perk, today) -> PerkStatus.ExpiringSoon
-                periodKeyFor(perk, today) == "%04d-%02d".format(today.year, today.monthValue) ->
-                    PerkStatus.NeedsUse
-                else -> PerkStatus.Upcoming
-            }
+            val statusItem = classifyPerkStatus(perk, today, usageAmount)
             UiPerkItem(
                 perk = perk,
                 isUsedThisPeriod = used,
