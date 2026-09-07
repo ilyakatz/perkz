@@ -48,6 +48,33 @@ internal fun periodLabelFor(perk: PerkEntity, date: LocalDate): String {
     return periodKeyFor(perk, date)
 }
 
+/**
+ * Friendly human-readable range for the perk's current period, e.g. "Sep 1 - 30",
+ * "Jul - Sep" for a quarter, or "2026" for an annual perk. Purely presentational;
+ * does not influence status classification or period keys.
+ */
+internal fun periodRangeLabelFor(perk: PerkEntity, date: LocalDate): String {
+    val key = periodKeyFor(perk, date)
+    return when {
+        Regex("""^\d{4}-\d{2}$""").matches(key) -> {
+            val yearMonth = YearMonth.parse(key)
+            val month = yearMonth.month.getDisplayName(java.time.format.TextStyle.SHORT, Locale.US)
+            "$month 1 - ${yearMonth.lengthOfMonth()}"
+        }
+        Regex("""^\d{4}-Q[1-4]$""").matches(key) -> {
+            val quarter = key.substringAfter("Q").toInt()
+            val startMonth = (quarter - 1) * 3 + 1
+            val start = Month.of(startMonth).getDisplayName(java.time.format.TextStyle.SHORT, Locale.US)
+            val end = Month.of(startMonth + 2).getDisplayName(java.time.format.TextStyle.SHORT, Locale.US)
+            "$start - $end"
+        }
+        key.endsWith("-H1") -> "Jan - Jun"
+        key.endsWith("-H2") -> "Jul - Dec"
+        Regex("""^\d{4}$""").matches(key) -> key
+        else -> key
+    }
+}
+
 internal fun isExpiringSoon(perk: PerkEntity, date: LocalDate): Boolean {
     val expiry = expiryDateFor(perk, date) ?: return false
     val daysUntil = ChronoUnit.DAYS.between(date, expiry)

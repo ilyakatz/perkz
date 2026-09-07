@@ -97,7 +97,7 @@ class PerkRepository(private val dao: PerkDao) {
                     sheetUrl = sheetUrl.orEmpty(),
                     rowNumber = perk.sourceRowNumber,
                     checked = amount > 0.0,
-                    usedValue = amount.toString()
+                    usedValue = if (amount > 0.0) amount.toString() else ""
                 )
             }
         } else if (amount > 0.0 && sheetUrl != null) {

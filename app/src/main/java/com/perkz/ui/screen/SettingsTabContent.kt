@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -28,6 +30,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import com.perkz.ui.model.ThemeMode
 import com.perkz.ui.model.validateCsvUrl
 
@@ -37,6 +41,8 @@ internal fun SettingsTabContent(
     urlInput: String,
     webhookInput: String,
     selectedThemeMode: ThemeMode,
+    isLoading: Boolean,
+    syncError: String?,
     onUrlChange: (String) -> Unit,
     onWebhookChange: (String) -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
@@ -89,6 +95,20 @@ internal fun SettingsTabContent(
         // Sheet URL section
         item {
             Text(
+                text = "Settings",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        item {
+            Text(
+                text = "Import recurring benefits from a Google Sheet, then optionally sync usage changes back.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        item {
+            Text(
                 text = "Sheet connection",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
@@ -134,15 +154,48 @@ internal fun SettingsTabContent(
 
         // Action buttons
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (syncError != null) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ErrorOutline,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Text(
+                                text = syncError,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
+                }
                 Button(
                     onClick = onSave,
-                    enabled = isValidUrl
+                    enabled = isValidUrl,
+                    modifier = Modifier.fillMaxWidth()
                 ) {
                     Text("Save settings")
                 }
-                OutlinedButton(onClick = onRefresh) {
-                    Text("Refresh data")
+                OutlinedButton(
+                    onClick = onRefresh,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (isLoading) "Syncing…" else "Refresh data")
                 }
             }
         }
@@ -153,6 +206,13 @@ internal fun SettingsTabContent(
                 text = "Appearance",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
+            )
+        }
+        item {
+            Text(
+                text = "Choose how Perkz should look. This preference is saved on this device.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         item {

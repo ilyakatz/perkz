@@ -13,3 +13,20 @@ internal fun parseAmount(value: String): Double? =
 internal fun formatAmount(value: Double): String =
     if (value % 1.0 == 0.0) value.toLong().toString()
     else String.format(Locale.US, "%.2f", value).trimEnd('0').trimEnd('.')
+
+/** True when the raw sheet value describes an integer-count unit (e.g. "3 uses") rather than currency. */
+internal fun isCountUnit(rawMaxValueOrUses: String): Boolean {
+    val normalized = rawMaxValueOrUses.lowercase(Locale.US)
+    if (Regex("[$€£¥]").containsMatchIn(rawMaxValueOrUses)) return false
+    return normalized.contains("use")
+}
+
+/** Currency symbol to prefix formatted amounts with, or blank for count-based units. */
+internal fun currencyPrefixFor(rawMaxValueOrUses: String): String {
+    Regex("[$€£¥]").find(rawMaxValueOrUses)?.let { return it.value }
+    return if (isCountUnit(rawMaxValueOrUses)) "" else "$"
+}
+
+/** Formats [value] using the unit implied by [rawMaxValueOrUses] (currency symbol or bare count). */
+internal fun formatUnitAmount(rawMaxValueOrUses: String, value: Double): String =
+    "${currencyPrefixFor(rawMaxValueOrUses)}${formatAmount(value)}"
