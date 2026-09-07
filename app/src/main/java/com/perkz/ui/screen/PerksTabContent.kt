@@ -218,7 +218,8 @@ private fun EmptyState() {
 private data class StatusPresetOption(
     val label: String,
     val statuses: Set<PerkStatus>,
-    val status: PerkStatus? = null
+    val status: PerkStatus? = null,
+    val supportingText: String? = null
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -251,7 +252,13 @@ private fun FilterSection(
     val horizontalGap = if (viewportWidth <= 320) 8.dp else 12.dp
     val fixedWideFilterWidths = viewportWidth >= 390
     val statusPresetOptions = buildList {
-        add(StatusPresetOption(ATTENTION_FILTER, DEFAULT_STATUS_FILTERS))
+        add(
+            StatusPresetOption(
+                label = ATTENTION_FILTER,
+                statuses = DEFAULT_STATUS_FILTERS,
+                supportingText = "Expiring soon + Needs use"
+            )
+        )
         add(StatusPresetOption(ALL_STATUSES_FILTER, emptySet()))
         PerkStatus.entries.forEach { add(StatusPresetOption(it.label, setOf(it), it)) }
     }
@@ -277,7 +284,13 @@ private fun FilterSection(
                         else Modifier.weight(1f)
                     )
                     .height(48.dp)
-                    .semantics { contentDescription = "Select card filter" },
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Select card filter"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { cardMenuExpanded = true }
+                    ),
             ) {
                 Card(
                     modifier = Modifier
@@ -311,7 +324,7 @@ private fun FilterSection(
                         )
                         Icon(
                             Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "Open card filters",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onPrimaryContainer,
                             modifier = Modifier.size(20.dp)
                         )
@@ -363,7 +376,13 @@ private fun FilterSection(
                         else Modifier.weight(1f)
                     )
                     .height(48.dp)
-                    .semantics { contentDescription = "Select status filter" },
+                    .semantics(mergeDescendants = true) {
+                        contentDescription = "Select status filter"
+                    }
+                    .clickable(
+                        role = Role.Button,
+                        onClick = { statusMenuExpanded = true }
+                    ),
             ) {
                 Card(
                     modifier = Modifier
@@ -397,7 +416,7 @@ private fun FilterSection(
                         CountBadge(count = statusPreviewCount(uiState, selectedStatuses))
                         Icon(
                             Icons.Filled.KeyboardArrowDown,
-                            contentDescription = "Open status filters",
+                            contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
@@ -419,6 +438,11 @@ private fun FilterSection(
                             statusMenuExpanded = false
                             onStatusPresetSelect(option.statuses)
                         },
+                        modifier = Modifier.semantics {
+                            if (option.supportingText != null) {
+                                contentDescription = "${option.label}: ${option.supportingText}"
+                            }
+                        },
                         text = {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
@@ -431,7 +455,22 @@ private fun FilterSection(
                                         .clip(CircleShape)
                                         .background(statusDotColor(option))
                                 )
-                                Text(option.label, modifier = Modifier.weight(1f))
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        option.label,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    option.supportingText?.let {
+                                        Text(
+                                            it,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
                                 CountBadge(count = statusOptionCount(uiState, option))
                                 if (selected) {
                                     Icon(Icons.Filled.Check, contentDescription = null)
@@ -485,7 +524,14 @@ private fun FilterSection(
                         InputChip(
                             selected = true,
                             onClick = { onApplyFilters(uiState.selectedCards - card, uiState.selectedStatuses) },
-                            label = { Text(card, maxLines = 1, softWrap = false) },
+                            label = {
+                                Text(
+                                    card,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
                             leadingIcon = { Icon(Icons.Filled.CreditCard, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             trailingIcon = { Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp)) },
                             modifier = Modifier
@@ -497,7 +543,14 @@ private fun FilterSection(
                         InputChip(
                             selected = true,
                             onClick = { onApplyFilters(uiState.selectedCards, uiState.selectedStatuses - status) },
-                            label = { Text(status.label, maxLines = 1, softWrap = false) },
+                            label = {
+                                Text(
+                                    status.label,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
                             leadingIcon = {
                                 Box(
                                     Modifier.size(12.dp).clip(CircleShape).background(status.resolvedColors().accentColor)
@@ -607,28 +660,18 @@ private fun FilterBottomSheet(
                 HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                 Text("Statuses", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                PerkStatus.entries.chunked(2).forEach { rowStatuses ->
-                    Row(
+                PerkStatus.entries.forEach { status ->
+                    val checked = status in selectedStatuses
+                    FilterToggleRow(
+                        checked = checked,
+                        label = status.label,
+                        count = uiState.statusCounts[status].orZero(),
+                        leadingDotColor = status.resolvedColors().accentColor,
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        rowStatuses.forEach { status ->
-                            val checked = status in selectedStatuses
-                            FilterToggleRow(
-                                checked = checked,
-                                label = status.label,
-                                count = uiState.statusCounts[status].orZero(),
-                                leadingDotColor = status.resolvedColors().accentColor,
-                                modifier = Modifier.weight(1f),
-                                onToggle = {
-                                    selectedStatuses = if (checked) selectedStatuses - status else selectedStatuses + status
-                                }
-                            )
+                        onToggle = {
+                            selectedStatuses = if (checked) selectedStatuses - status else selectedStatuses + status
                         }
-                        if (rowStatuses.size == 1) {
-                            Spacer(Modifier.weight(1f))
-                        }
-                    }
+                    )
                 }
             }
 
@@ -687,7 +730,13 @@ private fun FilterToggleRow(
         if (leadingDotColor != null) {
             Box(Modifier.size(10.dp).clip(CircleShape).background(leadingDotColor))
         }
-        Text(label, modifier = Modifier.weight(1f), maxLines = 1, softWrap = false)
+        Text(
+            label,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis
+        )
         CountBadge(count = count)
     }
 }
@@ -710,14 +759,6 @@ private fun attentionCount(uiState: UiState): Int =
         uiState.statusCounts[PerkStatus.NeedsUse].orZero()
 
 private fun Int?.orZero(): Int = this ?: 0
-
-private fun String.shortStatusLabel(): String = when (this) {
-    "Expiring soon" -> "Expiring"
-    "Partially used" -> "Partial"
-    "Already used" -> "Used"
-    "Not applicable" -> "N/A"
-    else -> this
-}
 
 private val previewFilterState = UiState(
     sheetUrl = "preview",

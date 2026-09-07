@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Refresh
@@ -33,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import com.perkz.viewmodel.PerkViewModel
 
 private enum class AppTab { Perks, Settings }
@@ -59,8 +62,9 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(56.dp)
                     .background(MaterialTheme.colorScheme.surface)
+                    .statusBarsPadding()
+                    .height(56.dp)
                     .padding(horizontal = 16.dp),
                 verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
             ) {
@@ -79,8 +83,13 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     Row(
                         verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                     ) {
-                        IconButton(onClick = viewModel::refresh) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Refresh perks")
+                        IconButton(
+                            onClick = viewModel::refresh,
+                            modifier = Modifier.semantics {
+                                contentDescription = "Refresh perks"
+                            }
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = null)
                         }
                         Text(
                             if (uiState.isLoading) "Syncing…" else uiState.syncLabel,
