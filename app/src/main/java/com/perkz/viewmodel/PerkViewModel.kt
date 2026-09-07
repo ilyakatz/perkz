@@ -67,7 +67,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         PerkDatabase::class.java,
         "perkz.db"
     )
-        .addMigrations(PerkDatabase.MIGRATION_9_10)
+        .addMigrations(PerkDatabase.MIGRATION_9_10, PerkDatabase.MIGRATION_10_11)
         .fallbackToDestructiveMigration()
         .build()
     private val dao = db.perkDao()

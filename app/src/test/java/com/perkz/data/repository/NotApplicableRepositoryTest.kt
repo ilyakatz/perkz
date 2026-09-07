@@ -46,6 +46,7 @@ class NotApplicableRepositoryTest {
         deadlineTrigger = "",
         maxValueOrUses = "100",
         details = "",
+        benefitUnit = "auto",
         usedFromSheet = true,
         usedAmountFromSheet = 25.0
     )

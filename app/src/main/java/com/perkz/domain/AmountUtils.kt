@@ -1,5 +1,6 @@
 package com.perkz.domain
 
+import com.perkz.domain.BenefitUnit
 import java.util.Locale
 
 internal fun parseAmount(value: String): Double? =
@@ -27,6 +28,24 @@ internal fun currencyPrefixFor(rawMaxValueOrUses: String): String {
     return if (isCountUnit(rawMaxValueOrUses)) "" else "$"
 }
 
+internal fun currencyPrefixFor(unit: BenefitUnit, rawMaxValueOrUses: String): String {
+    return when (unit) {
+        BenefitUnit.USD -> "$"
+        BenefitUnit.NONE -> ""
+        BenefitUnit.AUTO -> currencyPrefixFor(rawMaxValueOrUses)
+        else -> ""
+    }
+}
+
 /** Formats [value] using the unit implied by [rawMaxValueOrUses] (currency symbol or bare count). */
 internal fun formatUnitAmount(rawMaxValueOrUses: String, value: Double): String =
     "${currencyPrefixFor(rawMaxValueOrUses)}${formatAmount(value)}"
+
+internal fun formatUnitAmount(unit: BenefitUnit, rawMaxValueOrUses: String, value: Double): String {
+    return when (unit) {
+        BenefitUnit.USD -> "$${formatAmount(value)}"
+        BenefitUnit.NONE -> formatAmount(value)
+        BenefitUnit.AUTO -> formatUnitAmount(rawMaxValueOrUses, value)
+        else -> formatAmount(value)
+    }
+}

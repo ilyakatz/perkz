@@ -206,6 +206,7 @@ private fun previewPerk(
             deadlineTrigger = "",
             maxValueOrUses = maxValueOrUses,
             details = "",
+            benefitUnit = "auto",
             usedFromSheet = false,
             usedAmountFromSheet = null,
         ),

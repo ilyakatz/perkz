@@ -14,6 +14,7 @@ data class PerkEntity(
     val deadlineTrigger: String,
     val maxValueOrUses: String,
     val details: String,
+    val benefitUnit: String = "auto",
     val usedFromSheet: Boolean,
     val usedAmountFromSheet: Double?,
     val isNotApplicable: Boolean = false

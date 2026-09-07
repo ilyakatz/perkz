@@ -65,6 +65,7 @@ class PerkPeriodUtilsTest {
         deadlineTrigger = deadline,
         maxValueOrUses = "",
         details = "",
+        benefitUnit = "auto",
         usedFromSheet = false,
         usedAmountFromSheet = null
     )

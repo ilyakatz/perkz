@@ -70,6 +70,10 @@ import com.perkz.data.db.PerkEntity
 import com.perkz.domain.formatAmount
 import com.perkz.domain.formatUnitAmount
 import com.perkz.domain.isCountUnit
+import com.perkz.domain.BenefitUnit
+import com.perkz.domain.resolvedBenefitUnit
+import com.perkz.domain.isQuantity
+import com.perkz.domain.quantityLabel
 import com.perkz.ui.model.PerkStatus
 import com.perkz.ui.model.ThemeMode
 import com.perkz.ui.model.UiPerkItem
@@ -326,7 +330,7 @@ internal fun PerkRow(
                         usedAmount = item.usedAmount,
                         maxAmount = item.maxAmount,
                         remaining = remaining!!,
-                        rawUnit = item.perk.maxValueOrUses,
+                        perk = item.perk,
                         primaryTextColor = onCardPrimary,
                         secondaryTextColor = onCardSecondary,
                     )
@@ -353,6 +357,7 @@ internal fun PerkRow(
                 if (showAmountDialog) {
                     RecordUsageDialog(
                         amountText = amountText,
+                        unit = item.perk.resolvedBenefitUnit(),
                         maxValueOrUses = item.perk.maxValueOrUses,
                         maxAmount = item.maxAmount,
                         usedAmount = item.usedAmount,
@@ -533,17 +538,21 @@ private fun UsageSummary(
     usedAmount: Double,
     maxAmount: Double,
     remaining: Double,
-    rawUnit: String,
+    perk: PerkEntity,
     primaryTextColor: Color,
     secondaryTextColor: Color,
 ) {
-    val isCountBased = isCountUnit(rawUnit)
+    val unit = perk.resolvedBenefitUnit()
+    val rawUnit = perk.maxValueOrUses
+    val isCountBased = if (unit == BenefitUnit.AUTO) isCountUnit(rawUnit) else unit.isQuantity()
+    val label = unit.quantityLabel() ?: "uses"
+
     val usedText = if (isCountBased) {
-        "${formatUnitAmount(rawUnit, usedAmount)} of ${formatUnitAmount(rawUnit, maxAmount)} uses"
+        "${formatUnitAmount(unit, rawUnit, usedAmount)} of ${formatUnitAmount(unit, rawUnit, maxAmount)} $label"
     } else {
-        "${formatUnitAmount(rawUnit, usedAmount)} / ${formatUnitAmount(rawUnit, maxAmount)} used"
+        "${formatUnitAmount(unit, rawUnit, usedAmount)} / ${formatUnitAmount(unit, rawUnit, maxAmount)} used"
     }
-    val remainingText = formatUnitAmount(rawUnit, remaining)
+    val remainingText = formatUnitAmount(unit, rawUnit, remaining)
     val progress = (usedAmount / maxAmount.coerceAtLeast(1.0)).coerceIn(0.0, 1.0).toFloat()
     val percent = (progress * 100).toInt()
 
@@ -687,6 +696,7 @@ private fun previewItem(
         deadlineTrigger = deadlineTrigger,
         maxValueOrUses = maxValueOrUses,
         details = details,
+        benefitUnit = "auto",
         usedFromSheet = false,
         usedAmountFromSheet = null,
     ),

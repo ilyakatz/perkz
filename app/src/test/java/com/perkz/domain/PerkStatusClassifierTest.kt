@@ -116,6 +116,7 @@ class PerkStatusClassifierTest {
         deadlineTrigger = deadline,
         maxValueOrUses = max,
         details = "",
+        benefitUnit = "auto",
         usedFromSheet = usedFromSheet,
         usedAmountFromSheet = usedAmountFromSheet
     )

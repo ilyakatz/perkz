@@ -65,6 +65,7 @@ class PerkRepositoryTest {
         deadlineTrigger = "",
         maxValueOrUses = max,
         details = "",
+        benefitUnit = "auto",
         usedFromSheet = usedFromSheet,
         usedAmountFromSheet = usedAmountFromSheet
     )

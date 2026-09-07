@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
+import com.perkz.domain.BenefitUnit
 import com.perkz.domain.currencyPrefixFor
 import com.perkz.domain.formatUnitAmount
 import com.perkz.domain.parseAmount
@@ -35,6 +36,7 @@ import com.perkz.ui.theme.PerkzTheme
 @Composable
 internal fun RecordUsageDialog(
     amountText: String,
+    unit: BenefitUnit,
     maxValueOrUses: String,
     maxAmount: Double?,
     usedAmount: Double,
@@ -47,7 +49,7 @@ internal fun RecordUsageDialog(
     val exceedsRemaining =
         dialogRemaining != null && enteredAmount != null && enteredAmount > dialogRemaining
     val remainingText = dialogRemaining?.let {
-        formatUnitAmount(maxValueOrUses, it.coerceAtLeast(0.0))
+        formatUnitAmount(unit, maxValueOrUses, it.coerceAtLeast(0.0))
     }
 
     Dialog(
@@ -56,6 +58,7 @@ internal fun RecordUsageDialog(
     ) {
         RecordUsageDialogContent(
             amountText = amountText,
+            unit = unit,
             maxValueOrUses = maxValueOrUses,
             remainingText = remainingText,
             enteredAmount = enteredAmount,
@@ -70,6 +73,7 @@ internal fun RecordUsageDialog(
 @Composable
 private fun RecordUsageDialogContent(
     amountText: String,
+    unit: BenefitUnit,
     maxValueOrUses: String,
     remainingText: String?,
     enteredAmount: Double?,
@@ -101,7 +105,7 @@ private fun RecordUsageDialogContent(
                 onValueChange = onAmountTextChange,
                 leadingIcon = {
                     Text(
-                        text = currencyPrefixFor(maxValueOrUses).ifBlank { "#" },
+                        text = currencyPrefixFor(unit, maxValueOrUses).ifBlank { "#" },
                         fontWeight = FontWeight.Bold,
                     )
                 },
@@ -158,6 +162,7 @@ private fun RecordUsageDialogLightPreview() {
     PerkzTheme(themeMode = ThemeMode.LIGHT) {
         RecordUsageDialogContent(
             amountText = "25",
+            unit = BenefitUnit.AUTO,
             maxValueOrUses = "$300",
             remainingText = "$175 remaining",
             enteredAmount = 25.0,
@@ -179,6 +184,7 @@ private fun RecordUsageDialogDarkPreview() {
     PerkzTheme(themeMode = ThemeMode.DARK) {
         RecordUsageDialogContent(
             amountText = "25",
+            unit = BenefitUnit.AUTO,
             maxValueOrUses = "$300",
             remainingText = "$175 remaining",
             enteredAmount = 25.0,

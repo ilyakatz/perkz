@@ -19,6 +19,7 @@ class NotApplicableStatusTest {
             deadlineTrigger = "September 1",
             maxValueOrUses = "100",
             details = "",
+            benefitUnit = "auto",
             usedFromSheet = true,
             usedAmountFromSheet = 50.0,
             isNotApplicable = true

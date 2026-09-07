@@ -7,7 +7,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 
 @Database(
     entities = [PerkEntity::class, UsageEntity::class, SyncStatusEntity::class],
-    version = 10,
+    version = 11,
     exportSchema = false
 )
 abstract class PerkDatabase : RoomDatabase() {
@@ -25,6 +25,12 @@ abstract class PerkDatabase : RoomDatabase() {
                     )
                     """.trimIndent()
                 )
+            }
+        }
+
+        val MIGRATION_10_11 = object : Migration(10, 11) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE perks ADD COLUMN benefitUnit TEXT NOT NULL DEFAULT 'auto'")
             }
         }
     }

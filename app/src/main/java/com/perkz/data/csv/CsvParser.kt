@@ -1,6 +1,7 @@
 package com.perkz.data.csv
 
 import com.perkz.data.db.PerkEntity
+import com.perkz.domain.BenefitUnit
 import java.security.MessageDigest
 import java.util.Locale
 
@@ -63,6 +64,7 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
         .takeIf { it >= 0 } ?: 5
     val detailsIndex = findHeaderIndex(header, setOf("notes", "details", "description"))
         .takeIf { it >= 0 } ?: 6
+    val unitsIndex = findHeaderIndex(header, setOf("units", "unit"))
     val usedIndex = findHeaderIndex(header, setOf("used"))
     val dateUsedIndex = findHeaderIndex(header, setOf("dateused"))
 
@@ -76,6 +78,11 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
         val maxValueOrUses = row.valueAt(maxValueOrUsesIndex).trim()
         val deadlineTrigger = row.valueAt(deadlineIndex).trim()
         val details = row.valueAt(detailsIndex).trim()
+        val benefitUnit = if (unitsIndex >= 0) {
+            BenefitUnit.fromSource(row.valueAt(unitsIndex)).code
+        } else {
+            "auto"
+        }
         val usedValue = if (usedIndex >= 0) row.valueAt(usedIndex) else ""
         val dateUsedValue = if (dateUsedIndex >= 0) row.valueAt(dateUsedIndex) else ""
         val usedAmountFromSheet = parseNumericUsedAmount(usedValue)
@@ -97,6 +104,7 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
             deadlineTrigger = deadlineTrigger,
             maxValueOrUses = maxValueOrUses,
             details = details,
+            benefitUnit = benefitUnit,
             usedFromSheet = usedFromSheet,
             usedAmountFromSheet = usedAmountFromSheet,
             isNotApplicable = isNotApplicable
