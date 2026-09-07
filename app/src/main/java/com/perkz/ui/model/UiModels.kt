@@ -23,7 +23,7 @@ data class UiState(
     val statusCounts: Map<PerkStatus, Int> = emptyMap(),
     val selectedStatuses: Set<PerkStatus> = DEFAULT_STATUS_FILTERS,
     val isLoading: Boolean = false,
-    val syncLabel: String = "Synced 2m ago",
+    val syncLabel: String = "Not synced yet",
     val message: String? = null,
     val syncError: String? = null
 )

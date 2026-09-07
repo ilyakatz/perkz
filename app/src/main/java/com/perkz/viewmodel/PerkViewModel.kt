@@ -47,8 +47,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 private val Application.dataStore by preferencesDataStore(name = "settings")
+
+private data class SyncStatus(
+    val loading: Boolean,
+    val message: String?,
+    val error: String?,
+    val label: String
+)
 
 class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val db = Room.databaseBuilder(
@@ -71,6 +80,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val messageFlow = MutableStateFlow<String?>(null)
     private val syncErrorFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
+    private val syncLabelFlow = MutableStateFlow("Not synced yet")
+    private val syncTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
     private val selectedCardsFlow = application.dataStore.data.map { prefs ->
         prefs[selectedCardsKey]?.let(::decodeStringSet)
             ?: prefs[selectedCardKey]
@@ -84,8 +95,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val filtersFlow = combine(selectedCardsFlow, selectedStatusesFlow) { selectedCards, selectedStatuses ->
         selectedCards to selectedStatuses
     }
-    private val statusFlow = combine(loadingFlow, messageFlow, syncErrorFlow) { loading, message, error ->
-        Triple(loading, message, error)
+    private val statusFlow = combine(loadingFlow, messageFlow, syncErrorFlow, syncLabelFlow) { loading, message, error, syncLabel ->
+        SyncStatus(loading, message, error, syncLabel)
     }
 
     private val sheetUrlFlow: Flow<String> = application.dataStore.data.map {
@@ -125,7 +136,10 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         val (baseSettings, collapsedStatuses, collapsedIntervals) = settings
         val (sheetUrl, webhookUrl, themeMode) = baseSettings
         val (selectedCards, selectedStatuses) = filters
-        val (loading, message, syncError) = status
+        val loading = status.loading
+        val message = status.message
+        val syncError = status.error
+        val syncLabel = status.label
         val today = LocalDate.now()
         val usageByKey = usage.associateBy { it.perkId to it.periodKey }
         val items = perks.map { perk ->
@@ -194,7 +208,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             },
             selectedStatuses = effectiveSelectedStatuses,
             isLoading = loading,
-            syncLabel = if (loading) "Syncing…" else "Synced 2m ago",
+            syncLabel = if (loading) "Syncing…" else syncLabel,
             message = message,
             syncError = syncError
         )
@@ -232,6 +246,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 repository.refresh(url)
                 messageFlow.value = "Perks refreshed successfully! Check the data above."
                 syncErrorFlow.value = null
+                syncLabelFlow.value = "Synced at ${LocalTime.now().format(syncTimeFormatter)}"
                 Log.i("PerkViewModel", "Refresh completed successfully")
             } catch (e: Exception) {
                 val errorMsg = "Refresh failed: ${e.message ?: "unknown error"}"
