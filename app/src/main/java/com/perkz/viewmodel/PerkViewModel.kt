@@ -43,6 +43,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -99,7 +100,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
 
     private val sheetUrlFlow: Flow<String> = application.dataStore.data.map {
         it[sheetUrlKey] ?: ""
-    }
+    }.distinctUntilChanged()
     private val webhookUrlFlow: Flow<String> = application.dataStore.data.map {
         it[webhookUrlKey] ?: ""
     }
