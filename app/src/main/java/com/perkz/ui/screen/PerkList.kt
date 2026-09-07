@@ -71,6 +71,12 @@ internal fun PerkList(
             .filter { it.intervalGroups.isNotEmpty() }
             .forEach { statusGroup ->
                 val collapsed = statusGroup.status in uiState.collapsedStatuses
+                val intervalKeys = statusGroup.intervalGroups
+                    .map { "${statusGroup.status.name}|${it.interval}" }
+                    .toSet()
+                val allIntervalsCollapsed = uiState.collapsedIntervals
+                    .intersect(intervalKeys)
+                    .size == intervalKeys.size
                 item(key = "header-${statusGroup.status.name}") {
                     if (collapsed) {
                         StatusSectionHeader(
@@ -111,13 +117,20 @@ internal fun PerkList(
                                         perkCount = statusGroup.intervalGroups.sumOf { it.items.size },
                                         expanded = true,
                                         remainingSummary = statusGroup.remainingSummary(),
+                                        showExpandAll = statusGroup.intervalGroups.size > 1,
+                                        allIntervalsCollapsed = allIntervalsCollapsed,
+                                        onToggleAllIntervals = {
+                                            onSetIntervalsCollapsed(
+                                                intervalKeys,
+                                                !allIntervalsCollapsed,
+                                            )
+                                        },
                                         onClick = { onToggleStatusCollapsed(statusGroup.status) },
                                     )
                                     ExpandedStatusIntervals(
                                         statusGroup = statusGroup,
                                         collapsedIntervals = uiState.collapsedIntervals,
                                         onToggleIntervalCollapsed = onToggleIntervalCollapsed,
-                                        onSetIntervalsCollapsed = onSetIntervalsCollapsed,
                                         onToggleUsed = onToggleUsed,
                                         onAmountAdded = onAmountAdded,
                                         onMarkFull = onMarkFull,
@@ -140,26 +153,21 @@ private fun ExpandedStatusIntervals(
     statusGroup: UiStatusGroup,
     collapsedIntervals: Set<String>,
     onToggleIntervalCollapsed: (String) -> Unit,
-    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
     onToggleUsed: (PerkEntity, Boolean) -> Unit,
     onAmountAdded: (PerkEntity, Double) -> Unit,
     onMarkFull: (PerkEntity) -> Unit,
     onClearUsage: (PerkEntity) -> Unit,
     onNotApplicableChange: (PerkEntity, Boolean) -> Unit
 ) {
-    val intervals = statusGroup.intervalGroups.map { "${statusGroup.status.name}|${it.interval}" }.toSet()
     statusGroup.intervalGroups.forEach { intervalGroup ->
         val intervalKey = "${statusGroup.status.name}|${intervalGroup.interval}"
         val collapsed = intervalKey in collapsedIntervals
-        val allCollapsed = collapsedIntervals.intersect(intervals).size == intervals.size
         key(intervalKey) {
             IntervalSubsectionHeader(
                 interval = intervalGroup.interval,
                 perkCount = intervalGroup.items.size,
                 collapsed = collapsed,
-                allCollapsed = allCollapsed,
                 onToggle = { onToggleIntervalCollapsed(intervalKey) },
-                onToggleAll = { onSetIntervalsCollapsed(intervals, !allCollapsed) },
             ) {
                 intervalGroup.items.forEach { item ->
                     PerkRow(

@@ -33,9 +33,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.perkz.ui.model.PerkStatus
@@ -47,6 +49,9 @@ internal fun StatusSectionHeader(
     perkCount: Int,
     expanded: Boolean,
     remainingSummary: String? = null,
+    showExpandAll: Boolean = false,
+    allIntervalsCollapsed: Boolean = false,
+    onToggleAllIntervals: (() -> Unit)? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -67,6 +72,8 @@ internal fun StatusSectionHeader(
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Spacer(Modifier.width(6.dp))
                     Icon(
@@ -81,6 +88,19 @@ internal fun StatusSectionHeader(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (showExpandAll && onToggleAllIntervals != null) {
+                    TextButton(
+                        onClick = onToggleAllIntervals,
+                        contentPadding = PaddingValues(horizontal = 0.dp),
+                        modifier = Modifier.heightIn(min = 32.dp),
+                    ) {
+                        Text(
+                            text = if (allIntervalsCollapsed) "Expand all" else "Collapse all",
+                            maxLines = 1,
+                            softWrap = false,
+                        )
+                    }
+                }
             }
             if (remainingSummary != null) {
                 Box(
@@ -142,9 +162,11 @@ internal fun StatusSectionHeader(
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "$perkCount perks",
+                    text = perkCountLabel(perkCount),
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    softWrap = false,
                 )
                 Spacer(Modifier.weight(1f))
                 Icon(
@@ -162,9 +184,7 @@ internal fun IntervalSubsectionHeader(
     interval: String,
     perkCount: Int,
     collapsed: Boolean,
-    allCollapsed: Boolean,
     onToggle: () -> Unit,
-    onToggleAll: () -> Unit,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
@@ -180,16 +200,16 @@ internal fun IntervalSubsectionHeader(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 52.dp)
-                    .padding(start = 12.dp, end = 8.dp),
+                    .clickable(role = Role.Button, onClick = onToggle)
+                    .semantics {
+                        contentDescription = interval
+                        stateDescription = if (collapsed) "Collapsed" else "Expanded"
+                    }
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable(role = Role.Button, onClick = onToggle)
-                        .semantics {
-                            stateDescription = if (collapsed) "Collapsed" else "Expanded"
-                        },
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.Center,
                 ) {
                     Text(
@@ -198,12 +218,18 @@ internal fun IntervalSubsectionHeader(
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         Text(
                             text = interval,
+                            modifier = Modifier.weight(1f),
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
                         Icon(
                             imageVector = if (collapsed) {
@@ -217,17 +243,13 @@ internal fun IntervalSubsectionHeader(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "•  $perkCount perks",
+                            text = "•  ${perkCountLabel(perkCount)}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                     }
-                }
-                TextButton(
-                    onClick = onToggleAll,
-                    contentPadding = PaddingValues(horizontal = 8.dp),
-                ) {
-                    Text(if (allCollapsed) "Expand all" else "Collapse all")
                 }
             }
             HorizontalDivider(
@@ -242,6 +264,9 @@ internal fun IntervalSubsectionHeader(
                     content()
                 }
             }
+
         }
     }
 }
+
+private fun perkCountLabel(count: Int): String = "$count perk${if (count == 1) "" else "s"}"
