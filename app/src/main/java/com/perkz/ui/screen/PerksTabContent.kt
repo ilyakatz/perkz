@@ -8,7 +8,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,17 +19,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Badge
@@ -77,9 +72,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import com.perkz.data.db.PerkEntity
 import com.perkz.domain.cardLabelForFilter
-import com.perkz.domain.formatAmount
-import com.perkz.domain.isCountUnit
-import com.perkz.ui.component.PerkRow
 import com.perkz.ui.model.ALL_CARDS_FILTER
 import com.perkz.ui.model.UiState
 import com.perkz.ui.model.PerkStatus
@@ -818,230 +810,4 @@ private fun statusOptionCount(uiState: UiState, option: StatusPresetOption): Int
     ATTENTION_FILTER -> attentionCount(uiState)
     ALL_STATUSES_FILTER -> uiState.allItems.size
     else -> option.statuses.sumOf { uiState.statusCounts[it].orZero() }
-}
-
-/** Statuses where a "$X remaining" style summary next to the section title is meaningful. */
-private fun com.perkz.ui.model.UiStatusGroup.remainingSummary(): String? {
-    if (!status.showsRemainingSummary) return null
-    val items = intervalGroups.flatMap { it.items }
-    val remainingValues = items.mapNotNull { item -> item.maxAmount?.let { (it - item.usedAmount).coerceAtLeast(0.0) } }
-    if (remainingValues.isEmpty()) return null
-    val allCountUnits = items.all { isCountUnit(it.perk.maxValueOrUses) }
-    val prefix = if (allCountUnits) "" else "$"
-    return "$prefix${formatAmount(remainingValues.sum())}"
-}
-
-@Composable
-private fun PerkList(
-    uiState: UiState,
-    onToggleStatusCollapsed: (PerkStatus) -> Unit,
-    onToggleIntervalCollapsed: (String) -> Unit,
-    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
-    onToggleUsed: (PerkEntity, Boolean) -> Unit,
-    onAmountAdded: (PerkEntity, Double) -> Unit,
-    onMarkFull: (PerkEntity) -> Unit,
-    onClearUsage: (PerkEntity) -> Unit,
-    onNotApplicableChange: (PerkEntity, Boolean) -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        val listScope = this
-        uiState.statusGroups
-            .filter { it.intervalGroups.isNotEmpty() }
-            .forEach statusLoop@{ statusGroup ->
-            val collapsed = statusGroup.status in uiState.collapsedStatuses
-            item(key = "header-${statusGroup.status.name}") {
-                val statusColors = statusGroup.status.resolvedColors()
-                if (collapsed) {
-                    // Collapsed sections render as a compact neutral summary bar.
-                    val perkCount = statusGroup.intervalGroups.sumOf { it.items.size }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(MaterialTheme.shapes.medium)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .clickable { onToggleStatusCollapsed(statusGroup.status) }
-                            .semantics { stateDescription = "Collapsed" }
-                            .padding(horizontal = 16.dp, vertical = 14.dp)
-                    ) {
-                        Text(
-                            text = statusGroup.status.label.uppercase(),
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Text(
-                            text = "  •  $perkCount perks",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                        Spacer(Modifier.weight(1f))
-                        Icon(
-                            Icons.Filled.ChevronRight,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                } else {
-                    // Expanded sections show a rich title, subtitle, and optional remaining summary.
-                    val remainingSummary = statusGroup.remainingSummary()
-                    Row(
-                        verticalAlignment = Alignment.Top,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onToggleStatusCollapsed(statusGroup.status) }
-                            .semantics { stateDescription = "Expanded" }
-                            .padding(top = 6.dp, bottom = 4.dp)
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    text = statusGroup.status.label,
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                                Spacer(Modifier.width(6.dp))
-                                Icon(
-                                    Icons.Filled.ExpandLess,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                            Text(
-                                text = statusGroup.status.subtitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                        if (remainingSummary != null) {
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 12.dp)
-                                    .width(1.dp)
-                                    .height(48.dp)
-                                    .background(MaterialTheme.colorScheme.outlineVariant)
-                            )
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = remainingSummary,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = statusColors.accentColor,
-                                )
-                                Text(
-                                    text = "remaining",
-                                    style = MaterialTheme.typography.labelMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-            if (!collapsed) {
-                listScope.addStatusItems(
-                    statusGroup,
-                    uiState.collapsedIntervals,
-                    onToggleIntervalCollapsed,
-                    onSetIntervalsCollapsed,
-                    onToggleUsed,
-                    onAmountAdded,
-                    onMarkFull,
-                    onClearUsage,
-                    onNotApplicableChange
-                )
-            }
-        }
-
-        item { Spacer(Modifier.height(8.dp)) }
-    }
-}
-
-private fun LazyListScope.addStatusItems(
-    statusGroup: com.perkz.ui.model.UiStatusGroup,
-    collapsedIntervals: Set<String>,
-    onToggleIntervalCollapsed: (String) -> Unit,
-    onSetIntervalsCollapsed: (Set<String>, Boolean) -> Unit,
-    onToggleUsed: (PerkEntity, Boolean) -> Unit,
-    onAmountAdded: (PerkEntity, Double) -> Unit,
-    onMarkFull: (PerkEntity) -> Unit,
-    onClearUsage: (PerkEntity) -> Unit,
-    onNotApplicableChange: (PerkEntity, Boolean) -> Unit
-) {
-    val intervals = statusGroup.intervalGroups.map { "${statusGroup.status.name}|${it.interval}" }.toSet()
-    if (statusGroup.intervalGroups.isEmpty()) {
-        item(key = "empty-${statusGroup.status.name}") {
-            Text(text = statusGroup.status.emptyText, style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 18.dp, bottom = 4.dp))
-        }
-    } else {
-        statusGroup.intervalGroups.forEach { intervalGroup ->
-            val intervalKey = "${statusGroup.status.name}|${intervalGroup.interval}"
-            val collapsed = intervalKey in collapsedIntervals
-            val allCollapsed = collapsedIntervals.intersect(intervals).size == intervals.size
-            item(key = "interval-${statusGroup.status.name}-${intervalGroup.interval}") {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                    shape = MaterialTheme.shapes.large
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onToggleIntervalCollapsed(intervalKey) }
-                                .semantics {
-                                    stateDescription = if (collapsed) "Collapsed" else "Expanded"
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "${intervalGroup.interval.uppercase()}  •  ${intervalGroup.items.size} PERKS",
-                                style = MaterialTheme.typography.labelLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Spacer(Modifier.weight(1f))
-                            TextButton(
-                                onClick = {
-                                    onSetIntervalsCollapsed(intervals, !allCollapsed)
-                                }
-                            ) {
-                                Text(if (allCollapsed) "Expand all" else "Collapse all")
-                                Icon(
-                                    if (allCollapsed) Icons.Filled.KeyboardArrowDown else Icons.Filled.ExpandLess,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-                        }
-                        if (!collapsed) {
-                            Column(
-                                modifier = Modifier.padding(top = 10.dp),
-                                verticalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                intervalGroup.items.forEach { item ->
-                                    PerkRow(
-                                        item = item,
-                                        onCheckedChange = { checked -> onToggleUsed(item.perk, checked) },
-                                        onAmountAdded = { amount -> onAmountAdded(item.perk, amount) },
-                                        onMarkFull = { onMarkFull(item.perk) },
-                                        onClearUsage = { onClearUsage(item.perk) },
-                                        onNotApplicableChange = { value -> onNotApplicableChange(item.perk, value) }
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
