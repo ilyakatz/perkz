@@ -4,6 +4,7 @@ import android.util.Log
 import com.perkz.data.csv.parsePerksFromCsv
 import com.perkz.data.db.PerkDao
 import com.perkz.data.db.PerkEntity
+import com.perkz.data.db.SyncStatusEntity
 import com.perkz.data.db.UsageEntity
 import com.perkz.domain.periodKeyFor
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +23,8 @@ class PerkRepository(private val dao: PerkDao) {
     fun observePerks(): Flow<List<PerkEntity>> = dao.observePerks()
 
     fun observeUsage(): Flow<List<UsageEntity>> = dao.observeUsage()
+
+    fun observeSyncStatus(): Flow<SyncStatusEntity?> = dao.observeSyncStatus()
 
     suspend fun currentUsageAmount(perk: PerkEntity): Double {
         val periodKey = periodKeyFor(perk, LocalDate.now())
@@ -54,6 +57,9 @@ class PerkRepository(private val dao: PerkDao) {
             // The sheet is the source of truth when refreshed, including cleared Used values.
             dao.clearUsage()
             dao.insertPerks(parsedPerks)
+            dao.upsertSyncStatus(
+                SyncStatusEntity(lastSyncedAtEpochMillis = System.currentTimeMillis())
+            )
             Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
             Log.e("PerkRepository", "Refresh failed: ${e.message}", e)

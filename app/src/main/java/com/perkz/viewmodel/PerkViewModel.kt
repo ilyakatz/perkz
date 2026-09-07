@@ -46,8 +46,9 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private val Application.dataStore by preferencesDataStore(name = "settings")
@@ -65,6 +66,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         PerkDatabase::class.java,
         "perkz.db"
     )
+        .addMigrations(PerkDatabase.MIGRATION_9_10)
         .fallbackToDestructiveMigration()
         .build()
     private val dao = db.perkDao()
@@ -80,7 +82,6 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val messageFlow = MutableStateFlow<String?>(null)
     private val syncErrorFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
-    private val syncLabelFlow = MutableStateFlow("Not synced yet")
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
     private val selectedCardsFlow = application.dataStore.data.map { prefs ->
         prefs[selectedCardsKey]?.let(::decodeStringSet)
@@ -94,9 +95,6 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     }.stateIn(viewModelScope, SharingStarted.Lazily, DEFAULT_STATUS_FILTERS)
     private val filtersFlow = combine(selectedCardsFlow, selectedStatusesFlow) { selectedCards, selectedStatuses ->
         selectedCards to selectedStatuses
-    }
-    private val statusFlow = combine(loadingFlow, messageFlow, syncErrorFlow, syncLabelFlow) { loading, message, error, syncLabel ->
-        SyncStatus(loading, message, error, syncLabel)
     }
 
     private val sheetUrlFlow: Flow<String> = application.dataStore.data.map {
@@ -125,6 +123,17 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private val repository = PerkRepository(dao = dao)
+    private val syncStatusFlow = repository.observeSyncStatus()
+    private val statusFlow = combine(loadingFlow, messageFlow, syncErrorFlow, syncStatusFlow) { loading, message, error, syncStatus ->
+        val syncLabel = syncStatus?.lastSyncedAtEpochMillis?.let { timestamp ->
+            val time = Instant.ofEpochMilli(timestamp)
+                .atZone(ZoneId.systemDefault())
+                .toLocalTime()
+                .format(syncTimeFormatter)
+            "Synced at $time"
+        } ?: "Not synced yet"
+        SyncStatus(loading, message, error, syncLabel)
+    }
 
     val uiState = combine(
         settingsFlow,
@@ -246,7 +255,6 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 repository.refresh(url)
                 messageFlow.value = "Perks refreshed successfully! Check the data above."
                 syncErrorFlow.value = null
-                syncLabelFlow.value = "Synced at ${LocalTime.now().format(syncTimeFormatter)}"
                 Log.i("PerkViewModel", "Refresh completed successfully")
             } catch (e: Exception) {
                 val errorMsg = "Refresh failed: ${e.message ?: "unknown error"}"

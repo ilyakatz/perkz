@@ -14,6 +14,9 @@ interface PerkDao {
     @Query("SELECT * FROM usage")
     fun observeUsage(): Flow<List<UsageEntity>>
 
+    @Query("SELECT * FROM sync_status WHERE id = 1 LIMIT 1")
+    fun observeSyncStatus(): Flow<SyncStatusEntity?>
+
     @Query("DELETE FROM perks")
     suspend fun clearPerks()
 
@@ -25,6 +28,9 @@ interface PerkDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertUsage(usage: UsageEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSyncStatus(status: SyncStatusEntity)
 
     @Query("SELECT * FROM usage WHERE perkId = :perkId AND periodKey = :periodKey")
     suspend fun getUsage(perkId: String, periodKey: String): UsageEntity?

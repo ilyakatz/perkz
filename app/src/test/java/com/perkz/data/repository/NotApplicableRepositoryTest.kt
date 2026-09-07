@@ -2,6 +2,7 @@ package com.perkz.data.repository
 
 import com.perkz.data.db.PerkDao
 import com.perkz.data.db.PerkEntity
+import com.perkz.data.db.SyncStatusEntity
 import com.perkz.data.db.UsageEntity
 import com.perkz.domain.periodKeyFor
 import java.time.LocalDate
@@ -53,12 +54,14 @@ class NotApplicableRepositoryTest {
 private class RecordingNotApplicableDao : PerkDao {
     private val perks = MutableStateFlow<List<PerkEntity>>(emptyList())
     private val usage = MutableStateFlow<List<UsageEntity>>(emptyList())
+    private val syncStatus = MutableStateFlow<SyncStatusEntity?>(null)
     var current: UsageEntity? = null
     var deleted: Pair<String, String>? = null
     val inserted = mutableListOf<PerkEntity>()
 
     override fun observePerks(): Flow<List<PerkEntity>> = perks
     override fun observeUsage(): Flow<List<UsageEntity>> = usage
+    override fun observeSyncStatus(): Flow<SyncStatusEntity?> = syncStatus
     override suspend fun clearPerks() = perks.emit(emptyList())
     override suspend fun clearUsage() = usage.emit(emptyList())
     override suspend fun insertPerks(items: List<PerkEntity>) {
@@ -74,4 +77,7 @@ private class RecordingNotApplicableDao : PerkDao {
         current = null
     }
     override suspend fun updateUsedFromSheet(perkId: String, usedFromSheet: Boolean) = Unit
+    override suspend fun upsertSyncStatus(status: SyncStatusEntity) {
+        syncStatus.emit(status)
+    }
 }

@@ -2,6 +2,7 @@ package com.perkz.data.repository
 
 import com.perkz.data.db.PerkDao
 import com.perkz.data.db.PerkEntity
+import com.perkz.data.db.SyncStatusEntity
 import com.perkz.data.db.UsageEntity
 import com.perkz.domain.periodKeyFor
 import java.time.LocalDate
@@ -72,6 +73,7 @@ class PerkRepositoryTest {
 private class RecordingPerkDao : PerkDao {
     private val perks = MutableStateFlow<List<PerkEntity>>(emptyList())
     private val usage = MutableStateFlow<List<UsageEntity>>(emptyList())
+    private val syncStatus = MutableStateFlow<SyncStatusEntity?>(null)
     var current: UsageEntity? = null
     var upserted: UsageEntity? = null
     var deleted: Pair<String, String>? = null
@@ -79,6 +81,7 @@ private class RecordingPerkDao : PerkDao {
 
     override fun observePerks(): Flow<List<PerkEntity>> = perks
     override fun observeUsage(): Flow<List<UsageEntity>> = usage
+    override fun observeSyncStatus(): Flow<SyncStatusEntity?> = syncStatus
     override suspend fun clearPerks() = perks.emit(emptyList())
     override suspend fun clearUsage() = usage.emit(emptyList())
     override suspend fun insertPerks(items: List<PerkEntity>) = perks.emit(items)
@@ -93,5 +96,8 @@ private class RecordingPerkDao : PerkDao {
     }
     override suspend fun updateUsedFromSheet(perkId: String, usedFromSheet: Boolean) {
         updatedUsed = usedFromSheet
+    }
+    override suspend fun upsertSyncStatus(status: SyncStatusEntity) {
+        syncStatus.emit(status)
     }
 }
