@@ -413,7 +413,6 @@ private fun FilterSection(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f)
                         )
-                        CountBadge(count = statusPreviewCount(uiState, selectedStatuses))
                         Icon(
                             Icons.Filled.KeyboardArrowDown,
                             contentDescription = null,
