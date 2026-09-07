@@ -1,20 +1,15 @@
 package com.perkz.ui.screen
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -22,6 +17,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.perkz.data.db.PerkEntity
@@ -97,19 +93,22 @@ internal fun PerkList(
                             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
                             shape = MaterialTheme.shapes.large,
                         ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(IntrinsicSize.Min),
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxHeight()
-                                        .width(4.dp)
-                                        .background(statusAccent)
-                                )
                                 Column(
-                                    modifier = Modifier.weight(1f),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .drawBehind {
+                                            drawRect(
+                                                color = statusAccent,
+                                                size = androidx.compose.ui.geometry.Size(
+                                                    width = 4.dp.toPx(),
+                                                    height = size.height,
+                                                ),
+                                            )
+                                        }
+                                        .padding(start = 4.dp),
                                     verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
                                     StatusSectionHeader(
@@ -170,14 +169,16 @@ private fun ExpandedStatusIntervals(
                 onToggle = { onToggleIntervalCollapsed(intervalKey) },
             ) {
                 intervalGroup.items.forEach { item ->
-                    PerkRow(
-                        item = item,
-                        onCheckedChange = { checked -> onToggleUsed(item.perk, checked) },
-                        onAmountAdded = { amount -> onAmountAdded(item.perk, amount) },
-                        onMarkFull = { onMarkFull(item.perk) },
-                        onClearUsage = { onClearUsage(item.perk) },
-                        onNotApplicableChange = { value -> onNotApplicableChange(item.perk, value) }
-                    )
+                    key(item.perk.id) {
+                        PerkRow(
+                            item = item,
+                            onCheckedChange = { checked -> onToggleUsed(item.perk, checked) },
+                            onAmountAdded = { amount -> onAmountAdded(item.perk, amount) },
+                            onMarkFull = { onMarkFull(item.perk) },
+                            onClearUsage = { onClearUsage(item.perk) },
+                            onNotApplicableChange = { value -> onNotApplicableChange(item.perk, value) }
+                        )
+                    }
                 }
             }
         }

@@ -31,7 +31,8 @@ import androidx.compose.ui.unit.sp
 internal fun CardBrandBadge(
     cardName: String,
     modifier: Modifier = Modifier,
-    size: androidx.compose.ui.unit.Dp = 30.dp
+    size: androidx.compose.ui.unit.Dp = 30.dp,
+    cornerRadius: androidx.compose.ui.unit.Dp = 6.dp,
 ) {
     val brand = resolveCardBrand(
         cardName = cardName,
@@ -46,7 +47,7 @@ internal fun CardBrandBadge(
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(cornerRadius))
             .background(brand.bgColor),
         contentAlignment = Alignment.Center,
     ) {
