@@ -2,7 +2,7 @@
 
 Perkz is an Android app that pulls your credit-card perks from a Google Sheet (CSV export), shows them by interval, and lets you check them off per period.
 
-![Perkz App Screenshot](docs/screenshots/perkz-samsung-screenshot.png)
+<img src="docs/screenshots/perkz-samsung-screenshot.png" width="320" alt="Perkz App Screenshot">
 
 ## Features
 
