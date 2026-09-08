@@ -43,11 +43,7 @@ internal fun NotificationsTabContent(uiState: UiState) {
                 val today = LocalDate.now()
                 val daysLeft = ChronoUnit.DAYS.between(today, today.withDayOfMonth(today.lengthOfMonth()))
                 
-                sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit<br>")
-                
-                if (item.perk.deadlineTrigger.isNotBlank()) {
-                    sb.append("⚠️ <b>Deadline:</b> ${item.perk.deadlineTrigger}")
-                }
+                sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit")
                 
                 val styledMessage = HtmlCompat.fromHtml(sb.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY)
                 notificationManager.showNotification(
