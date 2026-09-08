@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,7 +39,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import com.perkz.viewmodel.PerkViewModel
 
-private enum class AppTab { Perks, Settings }
+private enum class AppTab { Perks, Notifications, Settings }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -124,6 +125,24 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     )
                 )
                 NavigationBarItem(
+                    selected = selectedTab == AppTab.Notifications,
+                    onClick = { selectedTab = AppTab.Notifications },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Notifications,
+                            contentDescription = "Notifications"
+                        )
+                    },
+                    label = { Text("Notifications") },
+                    colors = NavigationBarItemDefaults.colors(
+                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                        selectedIconColor = MaterialTheme.colorScheme.primary,
+                        selectedTextColor = MaterialTheme.colorScheme.primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                )
+                NavigationBarItem(
                     selected = selectedTab == AppTab.Settings,
                     onClick = { selectedTab = AppTab.Settings },
                     icon = {
@@ -166,6 +185,7 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     onClearUsage = viewModel::clearUsage,
                     onNotApplicableChange = viewModel::setNotApplicable
                 )
+                AppTab.Notifications -> NotificationsTabContent()
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,
                     webhookInput = webhookInput,
