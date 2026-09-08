@@ -46,10 +46,7 @@ internal fun NotificationsTabContent(uiState: UiState) {
                 sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit<br>")
                 
                 if (item.perk.deadlineTrigger.isNotBlank()) {
-                    sb.append("⚠️ <b>Deadline:</b> ${item.perk.deadlineTrigger}<br>")
-                }
-                if (item.perk.details.isNotBlank()) {
-                    sb.append("ℹ️ ${item.perk.details}")
+                    sb.append("⚠️ <b>Deadline:</b> ${item.perk.deadlineTrigger}")
                 }
                 
                 val styledMessage = HtmlCompat.fromHtml(sb.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY)
