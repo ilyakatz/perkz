@@ -35,7 +35,7 @@ class PerkNotificationManager(private val context: Context) {
         }
     }
 
-    fun showTestNotification() {
+    fun showNotification(title: String, message: String) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -45,8 +45,9 @@ class PerkNotificationManager(private val context: Context) {
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Fallback icon
-            .setContentTitle("Perk Reminder Test")
-            .setContentText("This is a test notification for your expiring perks!")
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
@@ -58,5 +59,12 @@ class PerkNotificationManager(private val context: Context) {
                 // Handle missing permission on Android 13+ if needed
             }
         }
+    }
+
+    fun showTestNotification() {
+        showNotification(
+            "Perk Reminder Test",
+            "This is a test notification for your expiring perks!"
+        )
     }
 }

@@ -185,7 +185,7 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
                     onClearUsage = viewModel::clearUsage,
                     onNotApplicableChange = viewModel::setNotApplicable
                 )
-                AppTab.Notifications -> NotificationsTabContent()
+                AppTab.Notifications -> NotificationsTabContent(uiState = uiState)
                 AppTab.Settings -> SettingsTabContent(
                     urlInput = urlInput,
                     webhookInput = webhookInput,

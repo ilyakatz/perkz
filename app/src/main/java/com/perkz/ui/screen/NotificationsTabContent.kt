@@ -19,17 +19,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.perkz.notification.PerkNotificationManager
+import com.perkz.ui.model.PerkStatus
+import com.perkz.ui.model.UiState
 
 @Composable
-internal fun NotificationsTabContent() {
+internal fun NotificationsTabContent(uiState: UiState) {
     val context = LocalContext.current
     val notificationManager = PerkNotificationManager(context)
+
+    fun triggerNotification() {
+        val expiringSoon = uiState.allItems.filter { it.status == PerkStatus.ExpiringSoon }
+        if (expiringSoon.isEmpty()) {
+            notificationManager.showNotification(
+                "Perkz",
+                "You're all caught up! No perks are expiring soon."
+            )
+        } else {
+            val title = if (expiringSoon.size == 1) {
+                "Perk Expiring Soon"
+            } else {
+                "${expiringSoon.size} Perks Expiring Soon"
+            }
+            val message = expiringSoon.joinToString("\n") { item ->
+                "${item.perk.title} (${item.perk.card}): ${item.perk.deadlineTrigger}"
+            }
+            notificationManager.showNotification(title, message)
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            notificationManager.showTestNotification()
+            triggerNotification()
         }
     }
 
@@ -55,7 +77,7 @@ internal fun NotificationsTabContent() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    notificationManager.showTestNotification()
+                    triggerNotification()
                 }
             }
         ) {
