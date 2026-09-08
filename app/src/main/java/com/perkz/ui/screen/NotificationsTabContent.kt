@@ -18,9 +18,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.text.HtmlCompat
 import com.perkz.notification.PerkNotificationManager
 import com.perkz.ui.model.PerkStatus
 import com.perkz.ui.model.UiState
+import java.time.LocalDate
+import java.time.temporal.ChronoUnit
 
 @Composable
 internal fun NotificationsTabContent(uiState: UiState) {
@@ -40,10 +43,26 @@ internal fun NotificationsTabContent(uiState: UiState) {
             } else {
                 "${expiringSoon.size} Perks Expiring Soon"
             }
-            val message = expiringSoon.joinToString("\n") { item ->
-                "${item.perk.title} (${item.perk.card}): ${item.perk.deadlineTrigger}"
+            
+            val messageHtml = expiringSoon.joinToString("<br><br>") { item ->
+                val sb = StringBuilder()
+                sb.append("<b>${item.perk.title}</b> (${item.perk.card})<br>")
+                
+                val today = LocalDate.now()
+                val daysLeft = ChronoUnit.DAYS.between(today, today.withDayOfMonth(today.lengthOfMonth()))
+                sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit<br>")
+                
+                if (item.perk.deadlineTrigger.isNotBlank()) {
+                    sb.append("⚠️ <b>Deadline:</b> ${item.perk.deadlineTrigger}<br>")
+                }
+                if (item.perk.details.isNotBlank()) {
+                    sb.append("ℹ️ ${item.perk.details}")
+                }
+                sb.toString()
             }
-            notificationManager.showNotification(title, message)
+            
+            val styledMessage = HtmlCompat.fromHtml(messageHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            notificationManager.showNotification(title, styledMessage)
         }
     }
 

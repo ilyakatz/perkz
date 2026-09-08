@@ -35,7 +35,7 @@ class PerkNotificationManager(private val context: Context) {
         }
     }
 
-    fun showNotification(title: String, message: String) {
+    fun showNotification(title: String, message: CharSequence) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
