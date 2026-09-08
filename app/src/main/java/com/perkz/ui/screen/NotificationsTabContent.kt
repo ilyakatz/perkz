@@ -38,18 +38,11 @@ internal fun NotificationsTabContent(uiState: UiState) {
                 "You're all caught up! No perks are expiring soon."
             )
         } else {
-            val title = if (expiringSoon.size == 1) {
-                "Perk Expiring Soon"
-            } else {
-                "${expiringSoon.size} Perks Expiring Soon"
-            }
-            
-            val messageHtml = expiringSoon.joinToString("<br><br>") { item ->
+            expiringSoon.forEach { item ->
                 val sb = StringBuilder()
-                sb.append("<b>${item.perk.title}</b> (${item.perk.card})<br>")
-                
                 val today = LocalDate.now()
                 val daysLeft = ChronoUnit.DAYS.between(today, today.withDayOfMonth(today.lengthOfMonth()))
+                
                 sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit<br>")
                 
                 if (item.perk.deadlineTrigger.isNotBlank()) {
@@ -58,11 +51,14 @@ internal fun NotificationsTabContent(uiState: UiState) {
                 if (item.perk.details.isNotBlank()) {
                     sb.append("ℹ️ ${item.perk.details}")
                 }
-                sb.toString()
+                
+                val styledMessage = HtmlCompat.fromHtml(sb.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY)
+                notificationManager.showNotification(
+                    title = "${item.perk.title} (${item.perk.card})",
+                    message = styledMessage,
+                    notificationId = item.perk.sourceRowNumber
+                )
             }
-            
-            val styledMessage = HtmlCompat.fromHtml(messageHtml, HtmlCompat.FROM_HTML_MODE_LEGACY)
-            notificationManager.showNotification(title, styledMessage)
         }
     }
 

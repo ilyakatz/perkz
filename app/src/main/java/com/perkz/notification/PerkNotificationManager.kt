@@ -35,7 +35,7 @@ class PerkNotificationManager(private val context: Context) {
         }
     }
 
-    fun showNotification(title: String, message: CharSequence) {
+    fun showNotification(title: String, message: CharSequence, notificationId: Int = NOTIFICATION_ID) {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
@@ -54,7 +54,7 @@ class PerkNotificationManager(private val context: Context) {
 
         with(NotificationManagerCompat.from(context)) {
             try {
-                notify(NOTIFICATION_ID, builder.build())
+                notify(notificationId, builder.build())
             } catch (e: SecurityException) {
                 // Handle missing permission on Android 13+ if needed
             }
