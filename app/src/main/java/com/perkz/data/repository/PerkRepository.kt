@@ -20,6 +20,10 @@ private const val DATE_USED_FORMAT = "MMM d"
 
 class PerkRepository(private val dao: PerkDao) {
 
+    val allPerks: Flow<List<PerkEntity>> = dao.observePerks()
+
+    val allUsage: Flow<List<UsageEntity>> = dao.observeUsage()
+
     fun observePerks(): Flow<List<PerkEntity>> = dao.observePerks()
 
     fun observeUsage(): Flow<List<UsageEntity>> = dao.observeUsage()

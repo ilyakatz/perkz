@@ -24,6 +24,8 @@ data class UiState(
     val selectedStatuses: Set<PerkStatus> = DEFAULT_STATUS_FILTERS,
     val isLoading: Boolean = false,
     val syncLabel: String = "Not synced yet",
+    val notificationSchedule: NotificationSchedule = NotificationSchedule.Off,
+    val notificationTime: java.time.LocalTime = java.time.LocalTime.of(9, 0),
     val message: String? = null,
     val syncError: String? = null
 )

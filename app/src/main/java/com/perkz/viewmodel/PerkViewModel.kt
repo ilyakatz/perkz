@@ -2,6 +2,7 @@ package com.perkz.viewmodel
 
 import android.app.Application
 import android.util.Log
+import androidx.core.text.HtmlCompat
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -25,6 +26,7 @@ import com.perkz.domain.usageAmountFor
 import com.perkz.ui.model.ALL_STATUSES_FILTER
 import com.perkz.ui.model.ATTENTION_FILTER
 import com.perkz.ui.model.DEFAULT_STATUS_FILTERS
+import com.perkz.ui.model.NotificationSchedule
 import com.perkz.ui.model.PerkStatus
 import com.perkz.ui.model.ThemeMode
 import com.perkz.ui.model.UiIntervalGroup
@@ -44,13 +46,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkManager
+import com.perkz.worker.PerkReminderWorker
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 private val Application.dataStore by preferencesDataStore(name = "settings")
 
@@ -78,6 +89,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val selectedCardKey: Preferences.Key<String> = stringPreferencesKey("selected_card")
     private val selectedStatusFilterKey: Preferences.Key<String> = stringPreferencesKey("selected_status_filter")
     private val themeModeKey: Preferences.Key<String> = stringPreferencesKey("theme_mode")
+    private val notificationScheduleKey: Preferences.Key<String> = stringPreferencesKey("notification_schedule")
+    private val notificationTimeKey: Preferences.Key<String> = stringPreferencesKey("notification_time")
     private val collapsedStatusesKey: Preferences.Key<String> = stringPreferencesKey("collapsed_statuses")
     private val collapsedIntervalsKey: Preferences.Key<String> = stringPreferencesKey("collapsed_intervals")
     private val messageFlow = MutableStateFlow<String?>(null)
@@ -107,6 +120,12 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val themeModeFlow: Flow<ThemeMode> = application.dataStore.data.map { prefs ->
         ThemeMode.entries.firstOrNull { it.name == prefs[themeModeKey] } ?: ThemeMode.SYSTEM
     }
+    private val notificationScheduleFlow: Flow<NotificationSchedule> = application.dataStore.data.map { prefs ->
+        NotificationSchedule.fromName(prefs[notificationScheduleKey])
+    }
+    private val notificationTimeFlow: Flow<LocalTime> = application.dataStore.data.map { prefs ->
+        prefs[notificationTimeKey]?.let { LocalTime.parse(it) } ?: LocalTime.of(9, 0)
+    }
     private val collapsedStatusesFlow: Flow<Set<PerkStatus>> = application.dataStore.data.map { prefs ->
         prefs[collapsedStatusesKey]
             .orEmpty()
@@ -117,10 +136,24 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val collapsedIntervalsFlow: Flow<Set<String>> = application.dataStore.data.map { prefs ->
         prefs[collapsedIntervalsKey].orEmpty().split(',').filter { it.isNotBlank() }.toSet()
     }
+    private val baseSettingsFlow = combine(
+        sheetUrlFlow, webhookUrlFlow, themeModeFlow, notificationScheduleFlow, notificationTimeFlow
+    ) { sheetUrl, webhookUrl, themeMode, notificationSchedule, notificationTime ->
+        BaseSettings(sheetUrl, webhookUrl, themeMode, notificationSchedule, notificationTime)
+    }
+
+    private data class BaseSettings(
+        val sheetUrl: String,
+        val webhookUrl: String,
+        val themeMode: ThemeMode,
+        val notificationSchedule: NotificationSchedule,
+        val notificationTime: LocalTime
+    )
+
     private val settingsFlow = combine(
-        sheetUrlFlow, webhookUrlFlow, themeModeFlow, collapsedStatusesFlow, collapsedIntervalsFlow
-    ) { sheetUrl, webhookUrl, themeMode, collapsedStatuses, collapsedIntervals ->
-        Triple(Triple(sheetUrl, webhookUrl, themeMode), collapsedStatuses, collapsedIntervals)
+        baseSettingsFlow, collapsedStatusesFlow, collapsedIntervalsFlow
+    ) { base, collapsedStatuses, collapsedIntervals ->
+        Triple(base, collapsedStatuses, collapsedIntervals)
     }
 
     private val repository = PerkRepository(dao = dao)
@@ -144,7 +177,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         statusFlow
     ) { settings, perks, usage, filters, status ->
         val (baseSettings, collapsedStatuses, collapsedIntervals) = settings
-        val (sheetUrl, webhookUrl, themeMode) = baseSettings
+        val (sheetUrl, webhookUrl, themeMode, notificationSchedule, notificationTime) = baseSettings
         val (selectedCards, selectedStatuses) = filters
         val loading = status.loading
         val message = status.message
@@ -219,6 +252,8 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             selectedStatuses = effectiveSelectedStatuses,
             isLoading = loading,
             syncLabel = if (loading) "Syncing…" else syncLabel,
+            notificationSchedule = notificationSchedule,
+            notificationTime = notificationTime,
             message = message,
             syncError = syncError
         )
@@ -227,6 +262,71 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = UiState()
     )
+
+    fun saveNotificationSettings(schedule: NotificationSchedule, time: LocalTime) {
+        viewModelScope.launch {
+            getApplication<Application>().dataStore.edit { prefs ->
+                prefs[notificationScheduleKey] = schedule.name
+                prefs[notificationTimeKey] = time.toString()
+            }
+            updateWorkerSchedule(schedule, time)
+        }
+    }
+
+    fun triggerTestNotification() {
+        val ui = uiState.value
+        val expiringSoon = ui.allItems.filter { it.status == PerkStatus.ExpiringSoon }
+        val notificationManager = com.perkz.notification.PerkNotificationManager(getApplication())
+        
+        if (expiringSoon.isEmpty()) {
+            notificationManager.showNotification(
+                "Perkz",
+                "You're all caught up! No perks are expiring soon."
+            )
+        } else {
+            expiringSoon.forEach { item ->
+                val sb = StringBuilder()
+                val today = LocalDate.now()
+                val daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, today.withDayOfMonth(today.lengthOfMonth()))
+                
+                sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit")
+                
+                val styledMessage = HtmlCompat.fromHtml(sb.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY)
+                notificationManager.showNotification(
+                    title = "${item.perk.title} (${item.perk.card})",
+                    message = styledMessage,
+                    notificationId = item.perk.sourceRowNumber
+                )
+            }
+        }
+    }
+
+    private fun updateWorkerSchedule(schedule: NotificationSchedule, time: LocalTime) {
+        val workManager = WorkManager.getInstance(getApplication())
+        if (schedule == NotificationSchedule.Off) {
+            workManager.cancelUniqueWork("perk_reminder")
+        } else {
+            val now = LocalDateTime.now()
+            var target = now.with(time)
+            if (target.isBefore(now)) {
+                target = target.plusDays(1)
+            }
+            val initialDelay = java.time.Duration.between(now, target).toMillis()
+
+            val repeatInterval = if (schedule == NotificationSchedule.Daily) 1L else 7L
+            val workRequest = PeriodicWorkRequestBuilder<PerkReminderWorker>(
+                repeatInterval, TimeUnit.DAYS
+            )
+                .setInitialDelay(initialDelay, TimeUnit.MILLISECONDS)
+                .build()
+
+            workManager.enqueueUniquePeriodicWork(
+                "perk_reminder",
+                ExistingPeriodicWorkPolicy.REPLACE,
+                workRequest
+            )
+        }
+    }
 
     init {
         // Automatically refresh when sheet URL becomes available

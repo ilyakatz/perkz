@@ -11,55 +11,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.core.text.HtmlCompat
-import com.perkz.notification.PerkNotificationManager
-import com.perkz.ui.model.PerkStatus
+import com.perkz.ui.model.NotificationSchedule
 import com.perkz.ui.model.UiState
-import java.time.LocalDate
-import java.time.temporal.ChronoUnit
+import java.time.LocalTime
+import androidx.compose.ui.tooling.preview.Preview
+import com.perkz.ui.component.NotificationSchedulePicker
+import com.perkz.ui.model.ThemeMode
+import com.perkz.ui.theme.PerkzTheme
 
 @Composable
-internal fun NotificationsTabContent(uiState: UiState) {
-    val context = LocalContext.current
-    val notificationManager = PerkNotificationManager(context)
-
-    fun triggerNotification() {
-        val expiringSoon = uiState.allItems.filter { it.status == PerkStatus.ExpiringSoon }
-        if (expiringSoon.isEmpty()) {
-            notificationManager.showNotification(
-                "Perkz",
-                "You're all caught up! No perks are expiring soon."
-            )
-        } else {
-            expiringSoon.forEach { item ->
-                val sb = StringBuilder()
-                val today = LocalDate.now()
-                val daysLeft = ChronoUnit.DAYS.between(today, today.withDayOfMonth(today.lengthOfMonth()))
-                
-                sb.append("⏳ ${daysLeft.coerceAtLeast(0)} days left • ${item.perk.interval} benefit")
-                
-                val styledMessage = HtmlCompat.fromHtml(sb.toString(), HtmlCompat.FROM_HTML_MODE_LEGACY)
-                notificationManager.showNotification(
-                    title = "${item.perk.title} (${item.perk.card})",
-                    message = styledMessage,
-                    notificationId = item.perk.sourceRowNumber
-                )
-            }
-        }
-    }
-
+internal fun NotificationsTabContent(
+    uiState: UiState,
+    onSaveSchedule: (NotificationSchedule, LocalTime) -> Unit,
+    onTestNotification: () -> Unit
+) {
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
-            triggerNotification()
+            onTestNotification()
         }
     }
 
@@ -79,17 +56,59 @@ internal fun NotificationsTabContent(uiState: UiState) {
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
+        
         Spacer(modifier = Modifier.height(32.dp))
+        
+        NotificationSchedulePicker(
+            initialSchedule = uiState.notificationSchedule,
+            initialTime = uiState.notificationTime,
+            onSaveSchedule = onSaveSchedule
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Spacer(modifier = Modifier.height(24.dp))
+
         Button(
             onClick = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                 } else {
-                    triggerNotification()
+                    onTestNotification()
                 }
             }
         ) {
             Text("Send Test Notification")
         }
+    }
+}
+
+@Preview(name = "Light", showBackground = true)
+@Composable
+private fun NotificationsTabContentLightPreview() {
+    PerkzTheme(themeMode = ThemeMode.LIGHT) {
+        NotificationsTabContent(
+            uiState = UiState(
+                notificationSchedule = NotificationSchedule.Daily,
+                notificationTime = LocalTime.of(9, 0)
+            ),
+            onSaveSchedule = { _, _ -> },
+            onTestNotification = {}
+        )
+    }
+}
+
+@Preview(name = "Dark", showBackground = true)
+@Composable
+private fun NotificationsTabContentDarkPreview() {
+    PerkzTheme(themeMode = ThemeMode.DARK) {
+        NotificationsTabContent(
+            uiState = UiState(
+                notificationSchedule = NotificationSchedule.Off,
+                notificationTime = LocalTime.of(20, 30)
+            ),
+            onSaveSchedule = { _, _ -> },
+            onTestNotification = {}
+        )
     }
 }
