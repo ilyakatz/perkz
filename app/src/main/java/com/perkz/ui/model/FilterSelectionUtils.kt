@@ -37,13 +37,22 @@ internal fun <T> applyPerkFilters(
     items: List<T>,
     selectedCards: Set<String>,
     selectedStatuses: Set<PerkStatus>,
+    searchQuery: String = "",
     cardSelector: (T) -> String,
-    statusSelector: (T) -> PerkStatus
+    statusSelector: (T) -> PerkStatus,
+    searchSelector: (T) -> String = { "" }
 ): List<T> {
-    val cardsFiltered = if (selectedCards.isEmpty()) {
+    val searchFiltered = if (searchQuery.isBlank()) {
         items
     } else {
-        items.filter { cardSelector(it) in selectedCards }
+        val query = searchQuery.trim().lowercase()
+        items.filter { searchSelector(it).lowercase().contains(query) }
+    }
+
+    val cardsFiltered = if (selectedCards.isEmpty()) {
+        searchFiltered
+    } else {
+        searchFiltered.filter { cardSelector(it) in selectedCards }
     }
     val effectiveStatuses = normalizeStatusFilters(selectedStatuses)
     return if (effectiveStatuses.isAllStatusesSelection()) {

@@ -22,6 +22,7 @@ data class UiState(
     val selectedCards: Set<String> = emptySet(),
     val statusCounts: Map<PerkStatus, Int> = emptyMap(),
     val selectedStatuses: Set<PerkStatus> = DEFAULT_STATUS_FILTERS,
+    val searchQuery: String = "",
     val isLoading: Boolean = false,
     val syncLabel: String = "Not synced yet",
     val notificationSchedule: NotificationSchedule = NotificationSchedule.Off,

@@ -5,8 +5,6 @@ import org.junit.Test
 
 class FilterSelectionUtilsTest {
 
-    private data class Item(val card: String, val status: PerkStatus)
-
     @Test
     fun normalizeCardFilters_removesUnavailableAndTreatsAllSelectedAsAll() {
         val available = setOf("Amex Gold", "Chase Sapphire")
@@ -54,4 +52,28 @@ class FilterSelectionUtilsTest {
         assertEquals(cards, decodeStringSet(encodeStringSet(cards)))
         assertEquals(statuses, decodeStatusSet(encodeStatusSet(statuses)))
     }
+
+    @Test
+    fun applyPerkFilters_applies_cards_statuses_and_search() {
+        val items = listOf(
+            Item("Amex Gold", PerkStatus.ExpiringSoon, "Instacart credit"),
+            Item("Amex Gold", PerkStatus.Used, "Uber Cash"),
+            Item("Chase Sapphire", PerkStatus.NeedsUse, "Instacart credit")
+        )
+
+        // Filter by Amex Gold and search for "Instacart"
+        val filtered = applyPerkFilters(
+            items = items,
+            selectedCards = setOf("Amex Gold"),
+            selectedStatuses = emptySet(),
+            searchQuery = "Instacart",
+            cardSelector = Item::card,
+            statusSelector = Item::status,
+            searchSelector = Item::title
+        )
+
+        assertEquals(listOf(items.first()), filtered)
+    }
+
+    private data class Item(val card: String, val status: PerkStatus, val title: String = "")
 }

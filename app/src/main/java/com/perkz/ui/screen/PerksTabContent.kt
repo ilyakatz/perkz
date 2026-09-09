@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -45,9 +46,12 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedIconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -89,6 +93,7 @@ internal fun PerksTabContent(
     uiState: UiState,
     onCardSelect: (String) -> Unit,
     onStatusPresetSelect: (Set<PerkStatus>) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onApplyFilters: (Set<String>, Set<PerkStatus>) -> Unit,
     onClearFilters: () -> Unit,
     onToggleStatusCollapsed: (PerkStatus) -> Unit,
@@ -111,6 +116,7 @@ internal fun PerksTabContent(
                 uiState = uiState,
                 onCardSelect = onCardSelect,
                 onStatusPresetSelect = onStatusPresetSelect,
+                onSearchQueryChange = onSearchQueryChange,
                 onApplyFilters = onApplyFilters,
                 onClearFilters = onClearFilters
             )
@@ -220,12 +226,14 @@ private fun FilterSection(
     uiState: UiState,
     onCardSelect: (String) -> Unit,
     onStatusPresetSelect: (Set<PerkStatus>) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
     onApplyFilters: (Set<String>, Set<PerkStatus>) -> Unit,
     onClearFilters: () -> Unit
 ) {
     var cardMenuExpanded by remember { mutableStateOf(false) }
     var statusMenuExpanded by remember { mutableStateOf(false) }
     var showFilterSheet by remember { mutableStateOf(false) }
+    var isSearchExpanded by remember { mutableStateOf(uiState.searchQuery.isNotEmpty()) }
     val selectedCardOption = uiState.selectedCards.singleOrNull()
         ?: if (uiState.selectedCards.isEmpty()) ALL_CARDS_FILTER else null
     val selectedCardLabel = when {
@@ -239,10 +247,9 @@ private fun FilterSection(
         selectedStatuses == DEFAULT_STATUS_FILTERS || selectedStatuses.isAllStatusesSelection()
     ) emptyList() else PerkStatus.entries.filter { it in selectedStatuses }
     val appliedCardFilters = uiState.selectedCards.toList().sorted()
-    val appliedFilterCount = appliedStatusFilters.size + appliedCardFilters.size
+    val appliedFilterCount = appliedStatusFilters.size + appliedCardFilters.size + (if (uiState.searchQuery.isNotBlank()) 1 else 0)
     val viewportWidth = LocalConfiguration.current.screenWidthDp
     val horizontalGap = if (viewportWidth <= 320) 8.dp else 12.dp
-    val fixedWideFilterWidths = viewportWidth >= 390
     val statusPresetOptions = buildList {
         add(
             StatusPresetOption(
@@ -271,10 +278,7 @@ private fun FilterSection(
         ) {
             Box(
                 modifier = Modifier
-                    .then(
-                        if (fixedWideFilterWidths) Modifier.width(132.dp)
-                        else Modifier.weight(1f)
-                    )
+                    .weight(1f)
                     .height(48.dp)
                     .semantics(mergeDescendants = true) {
                         contentDescription = "Select card filter"
@@ -363,10 +367,7 @@ private fun FilterSection(
 
             Box(
                 modifier = Modifier
-                    .then(
-                        if (fixedWideFilterWidths) Modifier.width(148.dp)
-                        else Modifier.weight(1f)
-                    )
+                    .weight(1.1f)
                     .height(48.dp)
                     .semantics(mergeDescendants = true) {
                         contentDescription = "Select status filter"
@@ -472,6 +473,25 @@ private fun FilterSection(
                 }
             }
 
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clickable(role = Role.Button, onClick = { isSearchExpanded = !isSearchExpanded })
+                    .semantics { contentDescription = "Search perks" },
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surface)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+
             BadgedBox(
                 badge = {
                     if (appliedFilterCount > 0) {
@@ -530,6 +550,25 @@ private fun FilterSection(
                                 .semantics { contentDescription = "Remove $card filter" }
                         )
                     }
+                    if (uiState.searchQuery.isNotBlank()) {
+                        InputChip(
+                            selected = true,
+                            onClick = { onSearchQueryChange("") },
+                            label = {
+                                Text(
+                                    "\"${uiState.searchQuery}\"",
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            },
+                            leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            trailingIcon = { Icon(Icons.Filled.Close, contentDescription = null, modifier = Modifier.size(16.dp)) },
+                            modifier = Modifier
+                                .height(40.dp)
+                                .semantics { contentDescription = "Remove search filter" }
+                        )
+                    }
                     appliedStatusFilters.forEach { status ->
                         InputChip(
                             selected = true,
@@ -562,6 +601,32 @@ private fun FilterSection(
                     Text("Clear all")
                 }
             }
+        }
+
+        if (isSearchExpanded) {
+            OutlinedTextField(
+                value = uiState.searchQuery,
+                onValueChange = onSearchQueryChange,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 4.dp),
+                placeholder = { Text("Search perks...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    IconButton(onClick = {
+                        onSearchQueryChange("")
+                        isSearchExpanded = false
+                    }) {
+                        Icon(Icons.Default.Close, contentDescription = "Clear search")
+                    }
+                },
+                singleLine = true,
+                shape = MaterialTheme.shapes.medium,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                    unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                )
+            )
         }
     }
 
@@ -764,7 +829,7 @@ private val previewFilterState = UiState(
 @Composable
 private fun FilterSectionPreview320() {
     com.perkz.ui.theme.PerkzTheme {
-        FilterSection(previewFilterState, {}, {}, { _, _ -> }, {})
+        FilterSection(previewFilterState, {}, {}, {}, { _, _ -> }, {})
     }
 }
 
@@ -772,7 +837,7 @@ private fun FilterSectionPreview320() {
 @Composable
 private fun FilterSectionPreview360() {
     com.perkz.ui.theme.PerkzTheme {
-        FilterSection(previewFilterState, {}, {}, { _, _ -> }, {})
+        FilterSection(previewFilterState, {}, {}, {}, { _, _ -> }, {})
     }
 }
 
@@ -780,7 +845,7 @@ private fun FilterSectionPreview360() {
 @Composable
 private fun FilterSectionPreview390() {
     com.perkz.ui.theme.PerkzTheme {
-        FilterSection(previewFilterState, {}, {}, { _, _ -> }, {})
+        FilterSection(previewFilterState, {}, {}, {}, { _, _ -> }, {})
     }
 }
 

@@ -45,11 +45,14 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.FlowPreview
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -93,9 +96,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val notificationTimeKey: Preferences.Key<String> = stringPreferencesKey("notification_time")
     private val collapsedStatusesKey: Preferences.Key<String> = stringPreferencesKey("collapsed_statuses")
     private val collapsedIntervalsKey: Preferences.Key<String> = stringPreferencesKey("collapsed_intervals")
+    private val searchQueryKey: Preferences.Key<String> = stringPreferencesKey("search_query")
     private val messageFlow = MutableStateFlow<String?>(null)
     private val syncErrorFlow = MutableStateFlow<String?>(null)
     private val loadingFlow = MutableStateFlow(false)
+
+    @OptIn(FlowPreview::class)
+    private val searchQueryFlow = MutableStateFlow("")
+
     private val syncTimeFormatter = DateTimeFormatter.ofPattern("h:mm a")
     private val selectedCardsFlow = application.dataStore.data.map { prefs ->
         prefs[selectedCardsKey]?.let(::decodeStringSet)
@@ -107,8 +115,12 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     private val selectedStatusesFlow = application.dataStore.data.map { prefs ->
         prefs[selectedStatusesKey]?.let(::decodeStatusSet) ?: legacyStatusSelection(prefs[selectedStatusFilterKey])
     }.stateIn(viewModelScope, SharingStarted.Lazily, DEFAULT_STATUS_FILTERS)
-    private val filtersFlow = combine(selectedCardsFlow, selectedStatusesFlow) { selectedCards, selectedStatuses ->
-        selectedCards to selectedStatuses
+    private val filtersFlow = combine(
+        selectedCardsFlow,
+        selectedStatusesFlow,
+        searchQueryFlow
+    ) { cards, statuses, query ->
+        Triple(cards, statuses, query)
     }
 
     private val sheetUrlFlow: Flow<String> = application.dataStore.data.map {
@@ -178,7 +190,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     ) { settings, perks, usage, filters, status ->
         val (baseSettings, collapsedStatuses, collapsedIntervals) = settings
         val (sheetUrl, webhookUrl, themeMode, notificationSchedule, notificationTime) = baseSettings
-        val (selectedCards, selectedStatuses) = filters
+        val (selectedCards, selectedStatuses, searchQuery) = filters
         val loading = status.loading
         val message = status.message
         val syncError = status.error
@@ -212,8 +224,10 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             items = items,
             selectedCards = effectiveSelectedCards,
             selectedStatuses = effectiveSelectedStatuses,
+            searchQuery = searchQuery,
             cardSelector = { cardLabelForFilter(it.perk.card) },
-            statusSelector = { it.status }
+            statusSelector = { it.status },
+            searchSelector = { "${it.perk.title} ${it.perk.card} ${it.perk.details}" }
         )
         val statusesToShow = if (effectiveSelectedStatuses.isAllStatusesSelection()) {
             PerkStatus.entries
@@ -250,6 +264,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 items.count { it.status == statusValue }
             },
             selectedStatuses = effectiveSelectedStatuses,
+            searchQuery = searchQuery,
             isLoading = loading,
             syncLabel = if (loading) "Syncing…" else syncLabel,
             notificationSchedule = notificationSchedule,
@@ -329,6 +344,21 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
+        // Load initial search query and persist changes with debounce to avoid disk churn while typing
+        viewModelScope.launch {
+            val initialQuery = application.dataStore.data.first()[searchQueryKey] ?: ""
+            searchQueryFlow.value = initialQuery
+
+            @OptIn(FlowPreview::class)
+            searchQueryFlow
+                .drop(1)
+                .debounce(500)
+                .distinctUntilChanged()
+                .collect { query ->
+                    getApplication<Application>().dataStore.edit { it[searchQueryKey] = query }
+                }
+        }
+
         // Automatically refresh when sheet URL becomes available
         viewModelScope.launch {
             sheetUrlFlow.collect { url ->
@@ -494,12 +524,17 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         saveFilters(uiState.value.selectedCards, statuses)
     }
 
+    fun setSearchQuery(query: String) {
+        searchQueryFlow.value = query
+    }
+
     fun applyFilters(cards: Set<String>, statuses: Set<PerkStatus>) {
         saveFilters(cards, statuses)
     }
 
     fun clearFilters() {
         saveFilters(emptySet(), DEFAULT_STATUS_FILTERS)
+        setSearchQuery("")
     }
 
     fun toggleStatusCollapsed(status: PerkStatus) {
