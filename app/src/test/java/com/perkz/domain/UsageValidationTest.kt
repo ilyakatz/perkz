@@ -75,4 +75,18 @@ class UsageValidationTest {
         assertFalse(validateUsage("0", 25.0, 100.0, false).isValid)
         assertFalse(validateUsage("-5", 25.0, 100.0, false).isValid)
     }
+
+    @Test
+    fun `quick actions should show for small whole number limits`() {
+        // Limit 3 -> show quick actions
+        assertTrue(validateUsage("1", 0.0, 3.0, false).showQuickActions)
+        // Limit 5 -> show quick actions
+        assertTrue(validateUsage("1", 0.0, 5.0, false).showQuickActions)
+        // Limit 6 -> don't show
+        assertFalse(validateUsage("1", 0.0, 6.0, false).showQuickActions)
+        // Limit 2.5 -> don't show (not whole number)
+        assertFalse(validateUsage("1", 0.0, 2.5, false).showQuickActions)
+        // Limit 0 -> don't show
+        assertFalse(validateUsage("1", 10.0, 10.0, false).showQuickActions)
+    }
 }

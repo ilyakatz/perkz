@@ -61,9 +61,11 @@ internal fun RecordUsageDialog(
             unit = unit,
             maxValueOrUses = maxValueOrUses,
             isSubtraction = isSubtraction,
+            limit = validation.limit,
             limitText = limitText,
             enteredAmount = enteredAmount,
             exceedsLimit = validation.exceedsLimit,
+            showQuickActions = validation.showQuickActions,
             onAmountTextChange = onAmountTextChange,
             onDismiss = onDismiss,
             onAmountConfirmed = {
@@ -79,9 +81,11 @@ private fun RecordUsageDialogContent(
     unit: BenefitUnit,
     maxValueOrUses: String,
     isSubtraction: Boolean,
+    limit: Double?,
     limitText: String?,
     enteredAmount: Double?,
     exceedsLimit: Boolean,
+    showQuickActions: Boolean,
     onAmountTextChange: (String) -> Unit,
     onDismiss: () -> Unit,
     onAmountConfirmed: (Double) -> Unit,
@@ -111,35 +115,63 @@ private fun RecordUsageDialogContent(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            OutlinedTextField(
-                value = amountText,
-                onValueChange = onAmountTextChange,
-                leadingIcon = {
-                    Text(
-                        text = currencyPrefixFor(unit, maxValueOrUses).ifBlank { "#" },
-                        fontWeight = FontWeight.Bold,
-                    )
-                },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                isError = enteredAmount == null && amountText.isNotBlank() || exceedsLimit,
-                supportingText = {
-                    Text(
-                        text = if (exceedsLimit) {
-                            if (isSubtraction) "Cannot subtract more than what was used ($limitText)."
-                            else "Only ${limitText ?: "the remaining amount"} available."
-                        } else {
-                            limitText?.let { "Enter up to $it" }
-                                ?: if (isSubtraction) "Enter the amount to subtract"
-                                else "Enter the amount used"
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (exceedsLimit) MaterialTheme.colorScheme.error
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            if (showQuickActions) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    for (i in 1..limit!!.toInt()) {
+                        Button(
+                            onClick = { onAmountConfirmed(i.toDouble()) },
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(0.dp),
+                            shape = MaterialTheme.shapes.medium,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        ) {
+                            Text(
+                                text = i.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+            } else {
+                OutlinedTextField(
+                    value = amountText,
+                    onValueChange = onAmountTextChange,
+                    leadingIcon = {
+                        Text(
+                            text = currencyPrefixFor(unit, maxValueOrUses).ifBlank { "#" },
+                            fontWeight = FontWeight.Bold,
+                        )
+                    },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = enteredAmount == null && amountText.isNotBlank() || exceedsLimit,
+                    supportingText = {
+                        Text(
+                            text = if (exceedsLimit) {
+                                if (isSubtraction) "Cannot subtract more than what was used ($limitText)."
+                                else "Only ${limitText ?: "the remaining amount"} available."
+                            } else {
+                                limitText?.let { "Enter up to $it" }
+                                    ?: if (isSubtraction) "Enter the amount to subtract"
+                                    else "Enter the amount used"
+                            },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (exceedsLimit) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
@@ -153,17 +185,19 @@ private fun RecordUsageDialogContent(
                 ) {
                     Text("Cancel")
                 }
-                Button(
-                    enabled = enteredAmount != null && enteredAmount > 0.0 && !exceedsLimit,
-                    onClick = { onAmountConfirmed(enteredAmount!!) },
-                    contentPadding = PaddingValues(horizontal = 18.dp),
-                    modifier = Modifier.height(40.dp),
-                    shape = MaterialTheme.shapes.medium,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                ) { Text("Save") }
+                if (!showQuickActions) {
+                    Button(
+                        enabled = enteredAmount != null && enteredAmount > 0.0 && !exceedsLimit,
+                        onClick = { onAmountConfirmed(enteredAmount!!) },
+                        contentPadding = PaddingValues(horizontal = 18.dp),
+                        modifier = Modifier.height(40.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary,
+                        ),
+                    ) { Text("Save") }
+                }
             }
         }
     }
@@ -178,9 +212,32 @@ private fun RecordUsageDialogLightPreview() {
             unit = BenefitUnit.AUTO,
             maxValueOrUses = "$300",
             isSubtraction = false,
-            limitText = "$175 remaining",
+            limit = 175.0,
+            limitText = "$175",
             enteredAmount = 25.0,
             exceedsLimit = false,
+            showQuickActions = false,
+            onAmountTextChange = {},
+            onDismiss = {},
+            onAmountConfirmed = {},
+        )
+    }
+}
+
+@Preview(name = "Buttons Light", showBackground = true)
+@Composable
+private fun RecordUsageDialogButtonsLightPreview() {
+    PerkzTheme(themeMode = ThemeMode.LIGHT) {
+        RecordUsageDialogContent(
+            amountText = "3",
+            unit = BenefitUnit.NONE,
+            maxValueOrUses = "5 uses",
+            isSubtraction = false,
+            limit = 3.0,
+            limitText = "3",
+            enteredAmount = 3.0,
+            exceedsLimit = false,
+            showQuickActions = true,
             onAmountTextChange = {},
             onDismiss = {},
             onAmountConfirmed = {},
@@ -197,9 +254,11 @@ private fun SubtractUsageDialogLightPreview() {
             unit = BenefitUnit.AUTO,
             maxValueOrUses = "$300",
             isSubtraction = true,
+            limit = 75.0,
             limitText = "$75",
             enteredAmount = 25.0,
             exceedsLimit = false,
+            showQuickActions = false,
             onAmountTextChange = {},
             onDismiss = {},
             onAmountConfirmed = {},
@@ -220,9 +279,11 @@ private fun RecordUsageDialogDarkPreview() {
             unit = BenefitUnit.AUTO,
             maxValueOrUses = "$300",
             isSubtraction = false,
-            limitText = "$175 remaining",
+            limit = 175.0,
+            limitText = "$175",
             enteredAmount = 25.0,
             exceedsLimit = false,
+            showQuickActions = false,
             onAmountTextChange = {},
             onDismiss = {},
             onAmountConfirmed = {},
