@@ -49,6 +49,7 @@ import com.perkz.ui.model.UiIntervalGroup
 import com.perkz.ui.model.UiPerkItem
 import com.perkz.ui.model.UiState
 import com.perkz.ui.model.UiStatusGroup
+import com.perkz.ui.theme.PerkzIcons
 import com.perkz.ui.theme.PerkzTheme
 import com.perkz.viewmodel.PerkViewModel
 import java.time.LocalTime
@@ -173,7 +174,7 @@ private fun PerkScreenContent(
                     onClick = { selectedTab = AppTab.Perks },
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.GridView,
+                            imageVector = PerkzIcons.Perks,
                             contentDescription = "Perks"
                         )
                     },
@@ -191,7 +192,7 @@ private fun PerkScreenContent(
                     onClick = { selectedTab = AppTab.Notifications },
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.Notifications,
+                            imageVector = PerkzIcons.Notifications,
                             contentDescription = "Notifications"
                         )
                     },
@@ -209,7 +210,7 @@ private fun PerkScreenContent(
                     onClick = { selectedTab = AppTab.Settings },
                     icon = {
                         Icon(
-                            imageVector = Icons.Default.Settings,
+                            imageVector = PerkzIcons.Settings,
                             contentDescription = "Settings"
                         )
                     },
