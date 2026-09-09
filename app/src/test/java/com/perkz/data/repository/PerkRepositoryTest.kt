@@ -29,6 +29,30 @@ class PerkRepositoryTest {
     }
 
     @Test
+    fun `subtracting usage via setUsedAmount (clamped)`() = runBlocking {
+        val dao = RecordingPerkDao()
+        val repository = PerkRepository(dao)
+        val perk = perk()
+
+        // Initial usage
+        repository.setUsedAmount(perk, 25.0)
+        assertEquals(25.0, dao.upserted?.amount ?: 0.0, 0.0)
+
+        // Simulating ViewModel addUsage(perk, -10.0) logic
+        val existing = repository.currentUsageAmount(perk)
+        val newAmount = (existing + -10.0).coerceAtLeast(0.0)
+        repository.setUsedAmount(perk, newAmount)
+        assertEquals(15.0, dao.upserted?.amount ?: 0.0, 0.0)
+
+        // Simulating ViewModel addUsage(perk, -50.0) logic (clamped to 0)
+        val existing2 = repository.currentUsageAmount(perk)
+        val newAmount2 = (existing2 + -50.0).coerceAtLeast(0.0)
+        repository.setUsedAmount(perk, newAmount2)
+        assertEquals(null, dao.current) // repository.setUsedAmount(0.0) deletes usage
+        assertEquals(perk.id to periodKeyFor(perk, LocalDate.now()), dao.deleted)
+    }
+
+    @Test
     fun `current usage prefers local period usage then sheet values`() = runBlocking {
         val dao = RecordingPerkDao()
         val repository = PerkRepository(dao)

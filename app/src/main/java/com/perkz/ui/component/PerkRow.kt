@@ -90,6 +90,7 @@ internal fun PerkRow(
     onNotApplicableChange: (Boolean) -> Unit
 ) {
     var showAmountDialog by remember { mutableStateOf(false) }
+    var isSubtracting by remember { mutableStateOf(false) }
     var amountText by remember { mutableStateOf("") }
     var showMoreMenu by remember { mutableStateOf(false) }
     var showClearConfirmation by remember { mutableStateOf(false) }
@@ -161,6 +162,15 @@ internal fun PerkRow(
                         onDismissRequest = { showMoreMenu = false }
                     ) {
                         if (item.usedAmount > 0.0) {
+                            DropdownMenuItem(
+                                text = { Text("Subtract usage") },
+                                onClick = {
+                                    showMoreMenu = false
+                                    isSubtracting = true
+                                    amountText = ""
+                                    showAmountDialog = true
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("Clear usage") },
                                 onClick = {
@@ -361,12 +371,17 @@ internal fun PerkRow(
                         maxValueOrUses = item.perk.maxValueOrUses,
                         maxAmount = item.maxAmount,
                         usedAmount = item.usedAmount,
+                        isSubtraction = isSubtracting,
                         onAmountTextChange = { amountText = it },
-                        onDismiss = { showAmountDialog = false },
+                        onDismiss = {
+                            showAmountDialog = false
+                            isSubtracting = false
+                        },
                         onAmountAdded = {
                             onAmountAdded(it)
                             amountText = ""
                             showAmountDialog = false
+                            isSubtracting = false
                         },
                     )
                 }

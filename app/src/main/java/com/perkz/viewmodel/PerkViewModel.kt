@@ -404,13 +404,14 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun addUsage(perk: PerkEntity, amountToAdd: Double) {
-        if (amountToAdd <= 0.0) return
+        if (amountToAdd == 0.0) return
         viewModelScope.launch {
             try {
                 val existingAmount = repository.currentUsageAmount(perk)
+                val newAmount = (existingAmount + amountToAdd).coerceAtLeast(0.0)
                 val result = repository.setUsedAmount(
                     perk = perk,
-                    amount = existingAmount + amountToAdd,
+                    amount = newAmount,
                     sheetUrl = uiState.value.sheetUrl,
                     webhookUrl = uiState.value.webhookUrl
                 )
