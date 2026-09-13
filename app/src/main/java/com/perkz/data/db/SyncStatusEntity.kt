@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class SyncStatusEntity(
     @PrimaryKey val id: Int = SINGLETON_ID,
     val lastSyncedAtEpochMillis: Long,
+    val rawHeadersJson: String = "[]"
 ) {
     companion object {
         const val SINGLETON_ID = 1

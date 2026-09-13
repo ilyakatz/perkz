@@ -20,7 +20,7 @@ class CsvUnitsTest {
             "Empty Perk,Visa,Monthly,100,0,\n" +
             "Unknown Perk,Visa,Monthly,100,0,waffles\n"
 
-        val perks = parsePerksFromCsv(csv)
+        val perks = parsePerksFromCsv(csv).perks
 
         assertEquals("usd", perks[0].benefitUnit)
         assertEquals("uses", perks[1].benefitUnit)
@@ -41,7 +41,7 @@ class CsvUnitsTest {
         val csv = "Name,Card,Interval,Max Value,Used\n" +
             "Auto Perk,Visa,Monthly,100,0\n"
 
-        val perk = parsePerksFromCsv(csv).single()
+        val perk = parsePerksFromCsv(csv).perks.single()
 
         assertEquals("auto", perk.benefitUnit)
     }

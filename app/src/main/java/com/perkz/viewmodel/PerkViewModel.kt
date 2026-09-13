@@ -81,7 +81,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         PerkDatabase::class.java,
         "perkz.db"
     )
-        .addMigrations(PerkDatabase.MIGRATION_9_10, PerkDatabase.MIGRATION_10_11)
+        .addMigrations(PerkDatabase.MIGRATION_9_10, PerkDatabase.MIGRATION_10_11, PerkDatabase.MIGRATION_11_12)
         .fallbackToDestructiveMigration()
         .build()
     private val dao = db.perkDao()
@@ -499,6 +499,47 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                 }
             } catch (error: Exception) {
                 messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
+            }
+        }
+    }
+
+    fun addPerk(
+        title: String,
+        card: String,
+        interval: String,
+        maxValue: String,
+        units: String,
+        resetPeriod: String,
+        deadline: String,
+        details: String
+    ) {
+        viewModelScope.launch {
+            val state = uiState.value
+            val sheetUrl = state.sheetUrl
+            val webhookUrl = state.webhookUrl
+            if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
+                messageFlow.value = "Google Sheet URL and Webhook URL must be set in Settings first."
+                return@launch
+            }
+            loadingFlow.value = true
+            try {
+                repository.addPerk(
+                    title = title,
+                    card = card,
+                    interval = interval,
+                    maxValue = maxValue,
+                    units = units,
+                    resetPeriod = resetPeriod,
+                    deadline = deadline,
+                    details = details,
+                    sheetUrl = sheetUrl,
+                    webhookUrl = webhookUrl
+                )
+                messageFlow.value = "Perk added successfully!"
+            } catch (e: Exception) {
+                messageFlow.value = "Failed to add perk: ${e.message}"
+            } finally {
+                loadingFlow.value = false
             }
         }
     }

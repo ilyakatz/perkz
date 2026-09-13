@@ -12,11 +12,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -87,7 +89,8 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
         onSaveSchedule = viewModel::saveNotificationSettings,
         onTestNotification = viewModel::triggerTestNotification,
         onThemeModeChange = viewModel::saveThemeMode,
-        onSaveSettings = viewModel::saveSettings
+        onSaveSettings = viewModel::saveSettings,
+        onAddPerk = viewModel::addPerk
     )
 }
 
@@ -113,160 +116,183 @@ private fun PerkScreenContent(
     onSaveSchedule: (NotificationSchedule, LocalTime) -> Unit,
     onTestNotification: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
-    onSaveSettings: (String, String) -> Unit
+    onSaveSettings: (String, String) -> Unit,
+    onAddPerk: (String, String, String, String, String, String, String, String) -> Unit
 ) {
     var urlInput by remember(uiState.sheetUrl) { mutableStateOf(uiState.sheetUrl) }
     var webhookInput by remember(uiState.webhookUrl) { mutableStateOf(uiState.webhookUrl) }
     var selectedTab by remember { mutableStateOf(AppTab.Perks) }
+    var showingAddPerk by remember { mutableStateOf(false) }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface)
-                    .statusBarsPadding()
-                    .height(56.dp)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text("Perkz", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Text(
-                        "Card perks, fully yours.",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (selectedTab == AppTab.Perks) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.background,
+            floatingActionButton = {
+                if (selectedTab == AppTab.Perks && !showingAddPerk) {
+                    FloatingActionButton(
+                        onClick = { showingAddPerk = true },
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
                     ) {
-                        IconButton(
-                            onClick = onRefresh,
-                            modifier = Modifier.semantics {
-                                contentDescription = "Refresh perks"
-                            }
-                        ) {
-                            Icon(Icons.Default.Refresh, contentDescription = null)
-                        }
+                        Icon(Icons.Default.Add, contentDescription = "Add perk")
+                    }
+                }
+            },
+            topBar = {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surface)
+                        .statusBarsPadding()
+                        .height(56.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text("Perkz", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Text(
-                            if (uiState.isLoading) "Syncing…" else uiState.syncLabel,
+                            "Card perks, fully yours.",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    if (selectedTab == AppTab.Perks) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(
+                                onClick = onRefresh,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Refresh perks"
+                                }
+                            ) {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                            }
+                            Text(
+                                if (uiState.isLoading) "Syncing…" else uiState.syncLabel,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            },
+            bottomBar = {
+                NavigationBar(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    tonalElevation = 0.dp
+                ) {
+                    NavigationBarItem(
+                        selected = selectedTab == AppTab.Perks,
+                        onClick = { selectedTab = AppTab.Perks },
+                        icon = {
+                            Icon(
+                                imageVector = PerkzIcons.Perks,
+                                contentDescription = "Perks"
+                            )
+                        },
+                        label = { Text("Perks") },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == AppTab.Notifications,
+                        onClick = { selectedTab = AppTab.Notifications },
+                        icon = {
+                            Icon(
+                                imageVector = PerkzIcons.Notifications,
+                                contentDescription = "Notifications"
+                            )
+                        },
+                        label = { Text("Notifications") },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primaryContainer,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                    NavigationBarItem(
+                        selected = selectedTab == AppTab.Settings,
+                        onClick = { selectedTab = AppTab.Settings },
+                        icon = {
+                            Icon(
+                                imageVector = PerkzIcons.Settings,
+                                contentDescription = "Settings"
+                            )
+                        },
+                        label = { Text("Settings") },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
+                            selectedIconColor = MaterialTheme.colorScheme.primary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                            unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                            unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    )
+                }
+            },
+            snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+            ) {
+                when (selectedTab) {
+                    AppTab.Perks -> PerksTabContent(
+                        uiState = uiState,
+                        onCardSelect = onCardSelect,
+                        onStatusPresetSelect = onStatusPresetSelect,
+                        onSearchQueryChange = onSearchQueryChange,
+                        onApplyFilters = onApplyFilters,
+                        onClearFilters = onClearFilters,
+                        onToggleStatusCollapsed = onToggleStatusCollapsed,
+                        onToggleIntervalCollapsed = onToggleIntervalCollapsed,
+                        onSetIntervalsCollapsed = onSetIntervalsCollapsed,
+                        onToggleUsed = onToggleUsed,
+                        onAmountAdded = onAmountAdded,
+                        onMarkFull = onMarkFull,
+                        onClearUsage = onClearUsage,
+                        onNotApplicableChange = onNotApplicableChange
+                    )
+                    AppTab.Notifications -> NotificationsTabContent(
+                        uiState = uiState,
+                        onSaveSchedule = onSaveSchedule,
+                        onTestNotification = onTestNotification
+                    )
+                    AppTab.Settings -> SettingsTabContent(
+                        urlInput = urlInput,
+                        webhookInput = webhookInput,
+                        selectedThemeMode = uiState.themeMode,
+                        isLoading = uiState.isLoading,
+                        syncError = uiState.syncError,
+                        onUrlChange = { urlInput = it },
+                        onWebhookChange = { webhookInput = it },
+                        onThemeModeChange = onThemeModeChange,
+                        onSave = { onSaveSettings(urlInput, webhookInput) },
+                        onRefresh = onRefresh
+                    )
                 }
             }
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surface,
-                tonalElevation = 0.dp
-            ) {
-                NavigationBarItem(
-                    selected = selectedTab == AppTab.Perks,
-                    onClick = { selectedTab = AppTab.Perks },
-                    icon = {
-                        Icon(
-                            imageVector = PerkzIcons.Perks,
-                            contentDescription = "Perks"
-                        )
-                    },
-                    label = { Text("Perks") },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                NavigationBarItem(
-                    selected = selectedTab == AppTab.Notifications,
-                    onClick = { selectedTab = AppTab.Notifications },
-                    icon = {
-                        Icon(
-                            imageVector = PerkzIcons.Notifications,
-                            contentDescription = "Notifications"
-                        )
-                    },
-                    label = { Text("Notifications") },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = MaterialTheme.colorScheme.primaryContainer,
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-                NavigationBarItem(
-                    selected = selectedTab == AppTab.Settings,
-                    onClick = { selectedTab = AppTab.Settings },
-                    icon = {
-                        Icon(
-                            imageVector = PerkzIcons.Settings,
-                            contentDescription = "Settings"
-                        )
-                    },
-                    label = { Text("Settings") },
-                    colors = NavigationBarItemDefaults.colors(
-                        indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
-                        selectedIconColor = MaterialTheme.colorScheme.primary,
-                        selectedTextColor = MaterialTheme.colorScheme.primary,
-                        unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                        unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                )
-            }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
-            when (selectedTab) {
-                AppTab.Perks -> PerksTabContent(
-                    uiState = uiState,
-                    onCardSelect = onCardSelect,
-                    onStatusPresetSelect = onStatusPresetSelect,
-                    onSearchQueryChange = onSearchQueryChange,
-                    onApplyFilters = onApplyFilters,
-                    onClearFilters = onClearFilters,
-                    onToggleStatusCollapsed = onToggleStatusCollapsed,
-                    onToggleIntervalCollapsed = onToggleIntervalCollapsed,
-                    onSetIntervalsCollapsed = onSetIntervalsCollapsed,
-                    onToggleUsed = onToggleUsed,
-                    onAmountAdded = onAmountAdded,
-                    onMarkFull = onMarkFull,
-                    onClearUsage = onClearUsage,
-                    onNotApplicableChange = onNotApplicableChange
-                )
-                AppTab.Notifications -> NotificationsTabContent(
-                    uiState = uiState,
-                    onSaveSchedule = onSaveSchedule,
-                    onTestNotification = onTestNotification
-                )
-                AppTab.Settings -> SettingsTabContent(
-                    urlInput = urlInput,
-                    webhookInput = webhookInput,
-                    selectedThemeMode = uiState.themeMode,
-                    isLoading = uiState.isLoading,
-                    syncError = uiState.syncError,
-                    onUrlChange = { urlInput = it },
-                    onWebhookChange = { webhookInput = it },
-                    onThemeModeChange = onThemeModeChange,
-                    onSave = { onSaveSettings(urlInput, webhookInput) },
-                    onRefresh = onRefresh
-                )
-            }
+        }
+
+        if (showingAddPerk) {
+            AddPerkScreen(
+                availableCards = uiState.availableCards.filter { it != "No card" && it != "All cards" },
+                onDismiss = { showingAddPerk = false },
+                onAddPerk = onAddPerk
+            )
         }
     }
 }
@@ -348,7 +374,8 @@ private fun PerkScreenLightPreview() {
             onSaveSchedule = { _, _ -> },
             onTestNotification = {},
             onThemeModeChange = {},
-            onSaveSettings = { _, _ -> }
+            onSaveSettings = { _, _ -> },
+            onAddPerk = { _, _, _, _, _, _, _, _ -> }
         )
     }
 }
@@ -377,7 +404,8 @@ private fun PerkScreenDarkPreview() {
             onSaveSchedule = { _, _ -> },
             onTestNotification = {},
             onThemeModeChange = {},
-            onSaveSettings = { _, _ -> }
+            onSaveSettings = { _, _ -> },
+            onAddPerk = { _, _, _, _, _, _, _, _ -> }
         )
     }
 }

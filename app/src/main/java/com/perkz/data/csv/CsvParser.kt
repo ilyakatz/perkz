@@ -5,11 +5,17 @@ import com.perkz.domain.BenefitUnit
 import java.security.MessageDigest
 import java.util.Locale
 
-internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
-    val rows = parseCsv(csv)
-    if (rows.isEmpty()) return emptyList()
+data class ParsedCsv(
+    val perks: List<PerkEntity>,
+    val rawHeaders: List<String>
+)
 
-    val header = rows.first().map { normalizeHeader(it) }
+internal fun parsePerksFromCsv(csv: String): ParsedCsv {
+    val rows = parseCsv(csv)
+    if (rows.isEmpty()) return ParsedCsv(emptyList(), emptyList())
+
+    val rawHeaders = rows.first()
+    val header = rawHeaders.map { normalizeHeader(it) }
     val hasHeader = header.any {
         it in setOf(
             "name",
@@ -68,7 +74,7 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
     val usedIndex = findHeaderIndex(header, setOf("used"))
     val dateUsedIndex = findHeaderIndex(header, setOf("dateused"))
 
-    return dataRows.mapIndexedNotNull { index, row ->
+    val perks = dataRows.mapIndexedNotNull { index, row ->
         val title = row.valueAt(titleIndex).trim()
         if (title.isBlank()) return@mapIndexedNotNull null
         val card = row.valueAt(cardIndex).trim()
@@ -110,6 +116,7 @@ internal fun parsePerksFromCsv(csv: String): List<PerkEntity> {
             isNotApplicable = isNotApplicable
         )
     }
+    return ParsedCsv(perks, rawHeaders)
 }
 
 private fun parseCsv(input: String): List<List<String>> {
@@ -159,12 +166,12 @@ private fun normalizeHeader(value: String): String {
     return value.lowercase(Locale.US).trim().replace(Regex("[^a-z0-9]"), "")
 }
 
-private fun findHeaderIndex(header: List<String>, aliases: Set<String>): Int {
-    val exact = header.indexOfFirst { it in aliases }
-    if (exact >= 0) return exact
-    return header.indexOfFirst { normalized ->
-        aliases.any { alias -> alias.length >= 5 && normalized.contains(alias) }
-    }
+internal fun findHeaderIndex(header: List<String>, aliases: Set<String>, excludeIndices: Set<Int> = emptySet()): Int {
+    val exact = header.indices.firstOrNull { i -> i !in excludeIndices && header[i] in aliases }
+    if (exact != null) return exact
+    return header.indices.firstOrNull { i ->
+        i !in excludeIndices && aliases.any { alias -> alias.length >= 4 && header[i].contains(alias) }
+    } ?: -1
 }
 
 private fun stableIdFrom(value: String): String {

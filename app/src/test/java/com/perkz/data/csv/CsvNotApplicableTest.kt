@@ -9,7 +9,7 @@ class CsvNotApplicableTest {
         val perk = parsePerksFromCsv(
             "Name,Card,Used,Date Used\n" +
                 "Global entry,Amex,N/A,\n"
-        ).single()
+        ).perks.single()
 
         assertEquals(true, perk.isNotApplicable)
         assertEquals(false, perk.usedFromSheet)
@@ -21,7 +21,7 @@ class CsvNotApplicableTest {
         val perk = parsePerksFromCsv(
             "Name,Card,Used,Date Used\n" +
                 "Global entry,Amex,N/A,2026-09-01\n"
-        ).single()
+        ).perks.single()
 
         assertEquals(true, perk.isNotApplicable)
         assertEquals(false, perk.usedFromSheet)

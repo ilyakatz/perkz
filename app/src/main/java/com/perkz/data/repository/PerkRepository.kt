@@ -9,7 +9,10 @@ import com.perkz.data.db.UsageEntity
 import com.perkz.domain.periodKeyFor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalDate
@@ -51,7 +54,8 @@ class PerkRepository(private val dao: PerkDao) {
             if (csv.isBlank()) {
                 throw IllegalStateException("CSV returned empty - sheet may not be shared publicly")
             }
-            val parsedPerks = parsePerksFromCsv(csv)
+            val parsed = parsePerksFromCsv(csv)
+            val parsedPerks = parsed.perks
             Log.d("PerkRepository", "Parsed ${parsedPerks.size} perks from CSV")
             if (parsedPerks.isEmpty()) {
                 throw IllegalStateException("No perks parsed from CSV - check sheet format")
@@ -62,7 +66,10 @@ class PerkRepository(private val dao: PerkDao) {
             dao.clearUsage()
             dao.insertPerks(parsedPerks)
             dao.upsertSyncStatus(
-                SyncStatusEntity(lastSyncedAtEpochMillis = System.currentTimeMillis())
+                SyncStatusEntity(
+                    lastSyncedAtEpochMillis = System.currentTimeMillis(),
+                    rawHeadersJson = parsed.rawHeaders.toJsonArray()
+                )
             )
             Log.d("PerkRepository", "Successfully refreshed and stored ${parsedPerks.size} perks")
         } catch (e: Exception) {
@@ -107,7 +114,8 @@ class PerkRepository(private val dao: PerkDao) {
                     sheetUrl = sheetUrl.orEmpty(),
                     rowNumber = perk.sourceRowNumber,
                     checked = amount > 0.0,
-                    usedValue = if (amount > 0.0) amount.toString() else ""
+                    usedValue = if (amount > 0.0) amount.toString() else "",
+                    dao = dao
                 )
             }
         } else if (amount > 0.0 && sheetUrl != null) {
@@ -154,13 +162,86 @@ class PerkRepository(private val dao: PerkDao) {
                     sheetUrl = sheetUrl.orEmpty(),
                     rowNumber = perk.sourceRowNumber,
                     checked = false,
-                    usedValue = if (notApplicable) "N/A" else ""
+                    usedValue = if (notApplicable) "N/A" else "",
+                    dao = dao
                 )
             }
         } else if (sheetUrl != null) {
             throw IllegalStateException("Set 'Update webhook URL (Apps Script)' in Settings first.")
         }
         return if (hasWebhook) ToggleSyncResult.SyncedToSheet else ToggleSyncResult.LocalOnly
+    }
+
+    suspend fun addPerk(
+        title: String,
+        card: String,
+        interval: String,
+        maxValue: String,
+        units: String,
+        resetPeriod: String,
+        deadline: String,
+        details: String,
+        sheetUrl: String,
+        webhookUrl: String
+    ) {
+        val syncStatus = dao.observeSyncStatus().first()
+        val headers = syncStatus?.rawHeadersJson?.fromJsonArray() ?: emptyList()
+        
+        if (headers.isEmpty()) {
+            throw IllegalStateException("App hasn't learned your sheet structure. Please tap 'Refresh' on the Perks tab once.")
+        }
+
+        val normalizedHeaders = headers.map { h -> h.lowercase(Locale.US).trim().replace(Regex("[^a-z0-9]"), "") }
+        val indexValues = mutableMapOf<Int, String>()
+        val usedIndices = mutableSetOf<Int>()
+        
+        fun mapField(aliases: Set<String>, value: String) {
+            val idx = com.perkz.data.csv.findHeaderIndex(normalizedHeaders, aliases, usedIndices)
+            if (idx != -1) {
+                indexValues[idx] = value
+                usedIndices.add(idx)
+            }
+        }
+
+        mapField(setOf("card", "cardname"), card)
+        mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), title)
+        mapField(setOf("interval", "frequency", "cadence"), interval)
+        mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), resetPeriod)
+        mapField(setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit"), maxValue)
+        mapField(setOf("deadlinetrigger", "deadline", "trigger"), deadline)
+        mapField(setOf("notes", "details", "description"), details)
+        mapField(setOf("units", "unit"), units)
+
+        if (indexValues.isEmpty()) {
+            throw IllegalStateException("Could not match your app fields to any columns in your sheet. Check your headers.")
+        }
+
+        withContext(Dispatchers.IO) {
+            val payload = JSONObject().apply {
+                put("action", "append")
+                put("sheetId", parseSheetId(sheetUrl))
+                put("gid", parseGid(sheetUrl))
+                put("updates", JSONObject().apply {
+                    indexValues.forEach { (k, v) -> put(k.toString(), v) }
+                })
+            }
+
+            Log.d("PerkRepository", "Sending Append Payload: $payload")
+            postToWebhook(webhookUrl, payload.toString())
+        }
+        refresh(sheetUrl)
+    }
+}
+
+private fun List<String>.toJsonArray(): String = JSONArray(this).toString()
+
+private fun String.fromJsonArray(): List<String> {
+    if (this.isBlank() || this == "[]") return emptyList()
+    return try {
+        val arr = JSONArray(this)
+        List(arr.length()) { i -> arr.getString(i) }
+    } catch (e: Exception) {
+        emptyList()
     }
 }
 
@@ -169,32 +250,64 @@ enum class ToggleSyncResult {
     LocalOnly
 }
 
-private fun updateSheetViaWebhook(
+private suspend fun updateSheetViaWebhook(
     webhookUrl: String,
     sheetUrl: String,
     rowNumber: Int,
     checked: Boolean,
-    usedValue: String
+    usedValue: String,
+    dao: PerkDao? = null
 ) {
-    val sheetId = Regex("/d/([a-zA-Z0-9-_]+)")
-        .find(sheetUrl)
-        ?.groupValues
-        ?.getOrNull(1)
-        ?: throw IllegalArgumentException("Could not parse sheet ID from URL")
-    val gid = Regex("[?&]gid=([0-9]+)")
-        .find(sheetUrl)
-        ?.groupValues
-        ?.getOrNull(1)
-        ?: "0"
+    val sheetId = parseSheetId(sheetUrl)
+    val gid = parseGid(sheetUrl)
     val dateUsed = if (checked) {
         LocalDate.now().format(DateTimeFormatter.ofPattern(DATE_USED_FORMAT, Locale.US))
     } else {
         ""
     }
-    val body = """
-        {"sheetId":"${jsonEscape(sheetId)}","gid":"${jsonEscape(gid)}","rowNumber":$rowNumber,"checked":$checked,"dateUsed":"${jsonEscape(dateUsed)}","usedValue":"${jsonEscape(usedValue)}"}
-    """.trimIndent()
 
+    val indexValues = mutableMapOf<Int, String>()
+    if (dao != null) {
+        val syncStatus = dao.observeSyncStatus().first()
+        val headers = syncStatus?.rawHeadersJson?.fromJsonArray() ?: emptyList()
+        val normalizedHeaders = headers.map { h -> h.lowercase(Locale.US).trim().replace(Regex("[^a-z0-9]"), "") }
+        
+        val dateUsedIdx = com.perkz.data.csv.findHeaderIndex(normalizedHeaders, setOf("dateused"))
+        if (dateUsedIdx != -1) indexValues[dateUsedIdx] = dateUsed
+        
+        val usedIdx = com.perkz.data.csv.findHeaderIndex(normalizedHeaders, setOf("used"))
+        if (usedIdx != -1) indexValues[usedIdx] = usedValue
+    }
+
+    val payload = JSONObject().apply {
+        put("sheetId", sheetId)
+        put("gid", gid)
+        put("rowNumber", rowNumber)
+        put("updates", JSONObject().apply {
+            indexValues.forEach { (k, v) -> put(k.toString(), v) }
+        })
+    }
+
+    postToWebhook(webhookUrl, payload.toString())
+}
+
+private fun parseSheetId(sheetUrl: String): String {
+    return Regex("/d/([a-zA-Z0-9-_]+)")
+        .find(sheetUrl)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?: throw IllegalArgumentException("Could not parse sheet ID from URL")
+}
+
+private fun parseGid(sheetUrl: String): String {
+    return Regex("[?&]gid=([0-9]+)")
+        .find(sheetUrl)
+        ?.groupValues
+        ?.getOrNull(1)
+        ?: "0"
+}
+
+private fun postToWebhook(webhookUrl: String, body: String) {
     try {
         val connection = (URL(webhookUrl).openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
