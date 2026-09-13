@@ -423,7 +423,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                     webhookUrl = uiState.value.webhookUrl
                 ).also { result ->
                     if (result == ToggleSyncResult.LocalOnly) {
-                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Data source."
                     }
                 }
             } catch (error: Exception) {
@@ -446,7 +446,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                     webhookUrl = uiState.value.webhookUrl
                 )
                 if (result == ToggleSyncResult.LocalOnly) {
-                    messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                    messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Data source."
                 }
             } catch (error: Exception) {
                 messageFlow.value = "Could not update: ${error.message ?: "unknown error"}"
@@ -494,7 +494,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
                     webhookUrl = uiState.value.webhookUrl
                 ).also { result ->
                     if (result == ToggleSyncResult.LocalOnly) {
-                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Google Sheet."
+                        messageFlow.value = "Updated locally only. Add webhook URL in Settings to sync to Data source."
                     }
                 }
             } catch (error: Exception) {
@@ -518,7 +518,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val sheetUrl = state.sheetUrl
             val webhookUrl = state.webhookUrl
             if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
-                messageFlow.value = "Google Sheet URL and Webhook URL must be set in Settings first."
+                messageFlow.value = "Data source URL and Webhook URL must be set in Settings first."
                 return@launch
             }
             loadingFlow.value = true
@@ -553,7 +553,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
             val sheetUrl = state.sheetUrl
             val webhookUrl = state.webhookUrl
             if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
-                messageFlow.value = "Google Sheet URL and Webhook URL must be set in Settings first."
+                messageFlow.value = "Data source URL and Webhook URL must be set in Settings first."
                 return@launch
             }
             val validPerks = perks.filter { it.isValid }
@@ -586,7 +586,7 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         val sheetUrl = state.sheetUrl
         val webhookUrl = state.webhookUrl
         if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
-            throw IllegalStateException("Google Sheet URL and Webhook URL must be set in Settings first.")
+            throw IllegalStateException("Data source URL and Webhook URL must be set in Settings first.")
         }
         repository.addSingleDraft(draft, sheetUrl, webhookUrl)
     }

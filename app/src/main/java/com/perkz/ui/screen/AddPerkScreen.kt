@@ -214,16 +214,16 @@ internal fun AddPerkScreen(
                             minLines = 3
                         )
 
-                        Button(
-                            onClick = {
-                                onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
-                                onDismiss()
-                            },
-                            enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank(),
-                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
-                        ) {
-                            Text("Add Perk to Google Sheet")
-                        }
+                            Button(
+                                onClick = {
+                                    onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
+                                    onDismiss()
+                                },
+                                enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank(),
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                            ) {
+                                Text("Add Perk")
+                            }
                     }
                 }
                 AddMode.Bulk -> {

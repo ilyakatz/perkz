@@ -83,7 +83,7 @@ internal fun SettingsTabContent(
                         )
                         Spacer(Modifier.height(4.dp))
                         Text(
-                            text = "Open your Google Sheet → File → Share → Publish to web → select CSV format. Paste the published URL below.",
+                            text = "Open your Data source → File → Share → Publish to web → select CSV format. Paste the published URL below.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSecondaryContainer
                         )
@@ -102,14 +102,14 @@ internal fun SettingsTabContent(
         }
         item {
             Text(
-                text = "Import recurring benefits from a Google Sheet, then optionally sync usage changes back.",
+                text = "Import recurring benefits from a Data source, then optionally sync usage changes back.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         item {
             Text(
-                text = "Sheet connection",
+                text = "Data source connection",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -119,7 +119,7 @@ internal fun SettingsTabContent(
                 value = urlInput,
                 onValueChange = onUrlChange,
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("Google Sheet CSV URL") },
+                label = { Text("Data source CSV URL") },
                 supportingText = {
                     if (!isValidUrl && urlInput.isNotBlank()) {
                         Text(urlValidation.errorMessage)

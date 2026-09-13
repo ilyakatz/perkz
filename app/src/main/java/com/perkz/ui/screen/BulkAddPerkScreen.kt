@@ -267,10 +267,10 @@ internal fun BulkAddPerkContent(
 
         // Bottom Action Button
         val buttonText = when {
-            isSubmitting -> "Adding Perks to Sheet..."
-            addedCount == totalValid && totalValid > 0 -> "All $totalValid Perks Added to Sheet"
-            addedCount > 0 && pendingCount > 0 -> "Add Remaining $pendingCount Perks to Sheet"
-            else -> "Add $pendingCount Perks to Google Sheet"
+            isSubmitting -> "Adding Perks..."
+            addedCount == totalValid && totalValid > 0 -> "All $totalValid Perks Added"
+            addedCount > 0 && pendingCount > 0 -> "Add Remaining $pendingCount Perks"
+            else -> "Add $pendingCount Perks"
         }
 
         Button(
@@ -372,13 +372,13 @@ private fun BulkPerkRowCard(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
                                     Icons.Default.CheckCircle,
-                                    contentDescription = "Added to sheet",
+                                    contentDescription = "Added to data source",
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(Modifier.width(4.dp))
                                 Text(
-                                    text = "Added to Sheet",
+                                    text = "Added to Data source",
                                     style = MaterialTheme.typography.labelMedium,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary
@@ -394,7 +394,7 @@ private fun BulkPerkRowCard(
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = "Adding to Sheet...",
+                                    text = "Adding to Data source...",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.primary
                                 )

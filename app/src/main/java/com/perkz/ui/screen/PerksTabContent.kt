@@ -164,7 +164,7 @@ private fun WelcomeState() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Add your Google Sheet CSV URL in the Settings tab to get started.",
+            text = "Add your Data source CSV URL in the Settings tab to get started.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -205,7 +205,7 @@ private fun EmptyState() {
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Add your sheet URL in Settings, then tap the refresh icon to load your perks.",
+            text = "Add your Data source URL in Settings, then tap the refresh icon to load your perks.",
             style = MaterialTheme.typography.bodyMedium,
             textAlign = TextAlign.Center,
             color = MaterialTheme.colorScheme.onSurfaceVariant
