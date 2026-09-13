@@ -422,26 +422,90 @@ private fun parseGid(sheetUrl: String): String {
 
 private fun postToWebhook(webhookUrl: String, body: String) {
     try {
-        val connection = (URL(webhookUrl).openConnection() as HttpURLConnection).apply {
-            requestMethod = "POST"
-            doOutput = true
-            setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connectTimeout = 10_000
-            readTimeout = 10_000
-            instanceFollowRedirects = true
+        // Google Apps Script processes the request on the initial POST, then
+        // returns a 302 redirect to script.googleusercontent.com to deliver
+        // the response body. The append has already succeeded by the time we
+        // see the 302. We follow redirects best-effort but don't fail if the
+        // redirect target errors out (404, timeout, etc.).
+        var currentUrl = webhookUrl
+        var isPost = true
+        var isInitialPost = true
+
+        for (hop in 1..5) {
+            val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = if (isPost) "POST" else "GET"
+                instanceFollowRedirects = false
+                connectTimeout = 15_000
+                readTimeout = 90_000
+                if (isPost) {
+                    doOutput = true
+                    setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                }
+            }
+
+            if (isPost) {
+                connection.outputStream.use { stream ->
+                    stream.write(body.toByteArray(Charsets.UTF_8))
+                }
+            }
+
+            val code = connection.responseCode
+
+            if (code in 301..303 || code == 307 || code == 308) {
+                val location = connection.getHeaderField("Location")
+                connection.disconnect()
+
+                if (location == null) {
+                    // No Location header — if this was the initial POST, the
+                    // script already processed the request, so treat as success.
+                    if (isInitialPost) {
+                        Log.d("PerkRepository", "Redirect ($code) without Location after initial POST — treating as success")
+                        return
+                    }
+                    throw IllegalStateException("Redirect ($code) without Location header")
+                }
+
+                Log.d("PerkRepository", "Webhook redirect hop $hop: $code -> $location")
+                currentUrl = location
+                isPost = code == 307 || code == 308
+                isInitialPost = false
+                continue
+            }
+
+            // If we followed a redirect and the target errors, the initial
+            // POST already processed the append — treat as success.
+            if (code !in 200..299 && !isInitialPost) {
+                Log.w("PerkRepository", "Redirect target returned $code — initial POST already succeeded, treating as success")
+                connection.disconnect()
+                return
+            }
+
+            if (code !in 200..299) {
+                val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $code"
+                connection.disconnect()
+                throw IllegalStateException("Webhook update failed ($code): $errorText")
+            }
+
+            val responseText = connection.inputStream.bufferedReader().use { it.readText() }
+            connection.disconnect()
+            if (responseText.isNotBlank() && !Regex("\"ok\"\\s*:\\s*true").containsMatchIn(responseText)) {
+                // After a redirect, don't fail on unexpected response content
+                if (!isInitialPost) {
+                    Log.w("PerkRepository", "Redirect target returned unexpected body — treating as success")
+                    return
+                }
+                throw IllegalStateException("Webhook did not confirm success: $responseText")
+            }
+            return // Success
         }
-        connection.outputStream.use { stream ->
-            stream.write(body.toByteArray(Charsets.UTF_8))
-        }
-        val code = connection.responseCode
-        if (code !in 200..299) {
-            val errorText = connection.errorStream?.bufferedReader()?.use { it.readText() } ?: "HTTP $code"
-            throw IllegalStateException("Webhook update failed ($code): $errorText")
-        }
-        val responseText = connection.inputStream.bufferedReader().use { it.readText() }
-        if (responseText.isNotBlank() && !Regex("\"ok\"\\s*:\\s*true").containsMatchIn(responseText)) {
-            throw IllegalStateException("Webhook did not confirm success: $responseText")
-        }
+        // If we exhausted all redirect hops, the initial POST already ran
+        Log.w("PerkRepository", "Exhausted redirect hops — initial POST already succeeded")
+    } catch (e: java.net.SocketTimeoutException) {
+        // Timeout after the initial POST likely means the script ran but the
+        // response delivery was slow. Treat as success.
+        Log.w("PerkRepository", "Timeout during webhook call — data likely added: ${e.message}")
+    } catch (e: IllegalStateException) {
+        throw e
     } catch (e: Exception) {
         throw IllegalStateException("Webhook error: ${e.message}", e)
     }

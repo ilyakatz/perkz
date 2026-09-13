@@ -288,6 +288,8 @@ internal fun BulkAddPerkContent(
                                     val err = result.exceptionOrNull()?.message ?: "Failed to add row"
                                     onDraftChange(index, draft.copy(syncState = DraftSyncState.ERROR, errorMessage = err))
                                 }
+                                // Small delay between requests to avoid Google rate-limiting
+                                kotlinx.coroutines.delay(500)
                             }
                         }
                         isSubmitting = false
