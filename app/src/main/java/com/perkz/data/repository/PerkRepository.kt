@@ -231,6 +231,119 @@ class PerkRepository(private val dao: PerkDao) {
         }
         refresh(sheetUrl)
     }
+
+    suspend fun addPerksBulk(
+        perks: List<com.perkz.data.csv.PerkDraft>,
+        sheetUrl: String,
+        webhookUrl: String,
+        onProgress: (Int, Int) -> Unit = { _, _ -> }
+    ) {
+        val syncStatus = dao.observeSyncStatus().first()
+        val headers = syncStatus?.rawHeadersJson?.fromJsonArray() ?: emptyList()
+        
+        if (headers.isEmpty()) {
+            throw IllegalStateException("App hasn't learned your sheet structure. Please tap 'Refresh' on the Perks tab once.")
+        }
+
+        val validPerks = perks.filter { it.isValid }
+        if (validPerks.isEmpty()) {
+            throw IllegalStateException("No valid perks to add.")
+        }
+
+        val normalizedHeaders = headers.map { h -> h.lowercase(Locale.US).trim().replace(Regex("[^a-z0-9]"), "") }
+
+        withContext(Dispatchers.IO) {
+            validPerks.forEachIndexed { index, perk ->
+                onProgress(index + 1, validPerks.size)
+                val indexValues = mutableMapOf<Int, String>()
+                val usedIndices = mutableSetOf<Int>()
+
+                fun mapField(aliases: Set<String>, value: String) {
+                    val idx = com.perkz.data.csv.findHeaderIndex(normalizedHeaders, aliases, usedIndices)
+                    if (idx != -1) {
+                        indexValues[idx] = value
+                        usedIndices.add(idx)
+                    }
+                }
+
+                mapField(setOf("card", "cardname"), perk.card)
+                mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), perk.title)
+                mapField(setOf("interval", "frequency", "cadence"), perk.interval)
+                mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), perk.resetPeriod)
+                mapField(setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit"), perk.maxValue)
+                mapField(setOf("deadlinetrigger", "deadline", "trigger"), perk.deadline)
+                mapField(setOf("notes", "details", "description"), perk.details)
+                mapField(setOf("units", "unit"), perk.units)
+
+                if (indexValues.isNotEmpty()) {
+                    val payload = JSONObject().apply {
+                        put("action", "append")
+                        put("sheetId", parseSheetId(sheetUrl))
+                        put("gid", parseGid(sheetUrl))
+                        put("updates", JSONObject().apply {
+                            indexValues.forEach { (k, v) -> put(k.toString(), v) }
+                        })
+                    }
+
+                    Log.d("PerkRepository", "Sending Bulk Append Payload (${index + 1}/${validPerks.size}): $payload")
+                    postToWebhook(webhookUrl, payload.toString())
+                }
+            }
+        }
+        refresh(sheetUrl)
+    }
+
+    suspend fun addSingleDraft(
+        draft: com.perkz.data.csv.PerkDraft,
+        sheetUrl: String,
+        webhookUrl: String
+    ) {
+        val syncStatus = dao.observeSyncStatus().first()
+        val headers = syncStatus?.rawHeadersJson?.fromJsonArray() ?: emptyList()
+        
+        if (headers.isEmpty()) {
+            throw IllegalStateException("App hasn't learned your sheet structure. Please tap 'Refresh' on the Perks tab once.")
+        }
+
+        val normalizedHeaders = headers.map { h -> h.lowercase(Locale.US).trim().replace(Regex("[^a-z0-9]"), "") }
+        val indexValues = mutableMapOf<Int, String>()
+        val usedIndices = mutableSetOf<Int>()
+
+        fun mapField(aliases: Set<String>, value: String) {
+            val idx = com.perkz.data.csv.findHeaderIndex(normalizedHeaders, aliases, usedIndices)
+            if (idx != -1) {
+                indexValues[idx] = value
+                usedIndices.add(idx)
+            }
+        }
+
+        mapField(setOf("card", "cardname"), draft.card)
+        mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), draft.title)
+        mapField(setOf("interval", "frequency", "cadence"), draft.interval)
+        mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), draft.resetPeriod)
+        mapField(setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit"), draft.maxValue)
+        mapField(setOf("deadlinetrigger", "deadline", "trigger"), draft.deadline)
+        mapField(setOf("notes", "details", "description"), draft.details)
+        mapField(setOf("units", "unit"), draft.units)
+
+        if (indexValues.isEmpty()) {
+            throw IllegalStateException("Could not match your app fields to any columns in your sheet.")
+        }
+
+        withContext(Dispatchers.IO) {
+            val payload = JSONObject().apply {
+                put("action", "append")
+                put("sheetId", parseSheetId(sheetUrl))
+                put("gid", parseGid(sheetUrl))
+                put("updates", JSONObject().apply {
+                    indexValues.forEach { (k, v) -> put(k.toString(), v) }
+                })
+            }
+
+            Log.d("PerkRepository", "Sending Single Append Payload: $payload")
+            postToWebhook(webhookUrl, payload.toString())
+        }
+    }
 }
 
 private fun List<String>.toJsonArray(): String = JSONArray(this).toString()

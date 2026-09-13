@@ -544,6 +544,66 @@ class PerkViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun addPerksBulk(
+        perks: List<com.perkz.data.csv.PerkDraft>,
+        onComplete: () -> Unit = {}
+    ) {
+        viewModelScope.launch {
+            val state = uiState.value
+            val sheetUrl = state.sheetUrl
+            val webhookUrl = state.webhookUrl
+            if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
+                messageFlow.value = "Google Sheet URL and Webhook URL must be set in Settings first."
+                return@launch
+            }
+            val validPerks = perks.filter { it.isValid }
+            if (validPerks.isEmpty()) {
+                messageFlow.value = "No valid perks selected for bulk addition."
+                return@launch
+            }
+            loadingFlow.value = true
+            try {
+                repository.addPerksBulk(
+                    perks = validPerks,
+                    sheetUrl = sheetUrl,
+                    webhookUrl = webhookUrl,
+                    onProgress = { current, total ->
+                        messageFlow.value = "Adding perk $current of $total..."
+                    }
+                )
+                messageFlow.value = "Successfully added ${validPerks.size} perks!"
+                onComplete()
+            } catch (e: Exception) {
+                messageFlow.value = "Failed to add perks: ${e.message}"
+            } finally {
+                loadingFlow.value = false
+            }
+        }
+    }
+
+    suspend fun addSinglePerkDraft(draft: com.perkz.data.csv.PerkDraft): Result<Unit> = runCatching {
+        val state = uiState.value
+        val sheetUrl = state.sheetUrl
+        val webhookUrl = state.webhookUrl
+        if (sheetUrl.isBlank() || webhookUrl.isBlank()) {
+            throw IllegalStateException("Google Sheet URL and Webhook URL must be set in Settings first.")
+        }
+        repository.addSingleDraft(draft, sheetUrl, webhookUrl)
+    }
+
+    fun refreshSheetData() {
+        val url = uiState.value.sheetUrl
+        if (url.isNotBlank()) {
+            viewModelScope.launch {
+                try {
+                    repository.refresh(url)
+                } catch (e: Exception) {
+                    Log.e("PerkViewModel", "Sheet refresh failed after bulk add: ${e.message}")
+                }
+            }
+        }
+    }
+
     fun clearMessage() {
         messageFlow.value = null
     }

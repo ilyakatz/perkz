@@ -90,7 +90,9 @@ internal fun PerkScreen(viewModel: PerkViewModel) {
         onTestNotification = viewModel::triggerTestNotification,
         onThemeModeChange = viewModel::saveThemeMode,
         onSaveSettings = viewModel::saveSettings,
-        onAddPerk = viewModel::addPerk
+        onAddPerk = viewModel::addPerk,
+        onAddSinglePerk = viewModel::addSinglePerkDraft,
+        onCompleteBulk = viewModel::refreshSheetData
     )
 }
 
@@ -117,7 +119,9 @@ private fun PerkScreenContent(
     onTestNotification: () -> Unit,
     onThemeModeChange: (ThemeMode) -> Unit,
     onSaveSettings: (String, String) -> Unit,
-    onAddPerk: (String, String, String, String, String, String, String, String) -> Unit
+    onAddPerk: (String, String, String, String, String, String, String, String) -> Unit,
+    onAddSinglePerk: suspend (com.perkz.data.csv.PerkDraft) -> Result<Unit>,
+    onCompleteBulk: () -> Unit
 ) {
     var urlInput by remember(uiState.sheetUrl) { mutableStateOf(uiState.sheetUrl) }
     var webhookInput by remember(uiState.webhookUrl) { mutableStateOf(uiState.webhookUrl) }
@@ -291,7 +295,9 @@ private fun PerkScreenContent(
             AddPerkScreen(
                 availableCards = uiState.availableCards.filter { it != "No card" && it != "All cards" },
                 onDismiss = { showingAddPerk = false },
-                onAddPerk = onAddPerk
+                onAddPerk = onAddPerk,
+                onAddSinglePerk = onAddSinglePerk,
+                onCompleteBulk = onCompleteBulk
             )
         }
     }
@@ -375,7 +381,9 @@ private fun PerkScreenLightPreview() {
             onTestNotification = {},
             onThemeModeChange = {},
             onSaveSettings = { _, _ -> },
-            onAddPerk = { _, _, _, _, _, _, _, _ -> }
+            onAddPerk = { _, _, _, _, _, _, _, _ -> },
+            onAddSinglePerk = { Result.success(Unit) },
+            onCompleteBulk = {}
         )
     }
 }
@@ -405,7 +413,9 @@ private fun PerkScreenDarkPreview() {
             onTestNotification = {},
             onThemeModeChange = {},
             onSaveSettings = { _, _ -> },
-            onAddPerk = { _, _, _, _, _, _, _, _ -> }
+            onAddPerk = { _, _, _, _, _, _, _, _ -> },
+            onAddSinglePerk = { Result.success(Unit) },
+            onCompleteBulk = {}
         )
     }
 }

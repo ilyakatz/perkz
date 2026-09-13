@@ -15,8 +15,12 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 import androidx.compose.ui.tooling.preview.Preview
+import com.perkz.data.csv.PerkDraft
+import com.perkz.data.csv.TableDataParser
 import com.perkz.ui.theme.PerkzTheme
 import com.perkz.ui.model.ThemeMode
+
+private enum class AddMode { Single, Bulk }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,18 +36,23 @@ internal fun AddPerkScreen(
         resetPeriod: String,
         deadline: String,
         details: String
-    ) -> Unit
+    ) -> Unit,
+    onAddSinglePerk: suspend (PerkDraft) -> Result<Unit> = { Result.success(Unit) },
+    onCompleteBulk: () -> Unit = {}
 ) {
     BackHandler(onBack = onDismiss)
+
+    var currentMode by remember { mutableStateOf(AddMode.Single) }
 
     val currentMonth = remember {
         java.time.LocalDate.now().month.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US)
     }
-    
+
     val allMonths = remember {
         java.time.Month.entries.map { it.getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.US) }
     }
 
+    // Single Entry State
     var title by remember { mutableStateOf("") }
     var card by remember { mutableStateOf("") }
     var interval by remember { mutableStateOf("Monthly") }
@@ -54,7 +63,7 @@ internal fun AddPerkScreen(
     var details by remember { mutableStateOf("") }
 
     val intervals = listOf("Monthly", "Semi-annual", "Annual", "One-time enrollment", "Per eligible stay")
-    
+
     val resetPeriods = when (interval) {
         "Monthly" -> allMonths + "End of month"
         "Semi-annual" -> listOf("January–June", "July–December")
@@ -64,7 +73,6 @@ internal fun AddPerkScreen(
         else -> allMonths + listOf("Calendar year", "No stated reset", "No stated expiration", "End of month")
     }
 
-    // Automatically update resetPeriod when interval changes and the current value isn't in the new list
     LaunchedEffect(interval) {
         if (resetPeriod !in resetPeriods) {
             resetPeriod = resetPeriods.firstOrNull() ?: ""
@@ -72,25 +80,32 @@ internal fun AddPerkScreen(
     }
     val unitOptions = listOf("USD", "Uses", "Passes", "Points", "Miles", "Nights", "Months", "Guests", "Access", "None")
 
+    // Bulk Entry State
+    var rawText by remember { mutableStateOf("") }
+    var defaultCard by remember { mutableStateOf(availableCards.firstOrNull() ?: "") }
+    var bulkDrafts by remember { mutableStateOf<List<PerkDraft>>(emptyList()) }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Add New Perk") },
+                title = { Text(if (currentMode == AddMode.Single) "Add New Perk" else "Bulk Add Perks") },
                 navigationIcon = {
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = {
-                            onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
-                            onDismiss()
-                        },
-                        enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank()
-                    ) {
-                        Icon(Icons.Default.Check, contentDescription = "Save")
+                    if (currentMode == AddMode.Single) {
+                        IconButton(
+                            onClick = {
+                                onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
+                                onDismiss()
+                            },
+                            enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank()
+                        ) {
+                            Icon(Icons.Default.Check, contentDescription = "Save")
+                        }
                     }
                 }
             )
@@ -98,92 +113,147 @@ internal fun AddPerkScreen(
     ) { padding ->
         Column(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
-                label = { Text("Perk Title") },
-                placeholder = { Text("e.g. Dining Credit") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            EditableDropdownField(
-                label = "Card Name",
-                options = availableCards,
-                value = card,
-                onValueChange = { card = it },
-                placeholder = "e.g. Amex Gold",
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                EditableDropdownField(
-                    label = "Interval",
-                    options = intervals,
-                    value = interval,
-                    onValueChange = { interval = it },
-                    placeholder = "e.g. Monthly",
-                    modifier = Modifier.weight(1f)
-                )
-
-                EditableDropdownField(
-                    label = "Reset Period",
-                    options = resetPeriods,
-                    value = resetPeriod,
-                    onValueChange = { resetPeriod = it },
-                    placeholder = "e.g. End of month",
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedTextField(
-                    value = maxValue,
-                    onValueChange = { maxValue = it },
-                    label = { Text("Max Value / Uses") },
-                    placeholder = { Text("e.g. 10") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    modifier = Modifier.weight(1f)
-                )
-
-                DropdownField(
-                    label = "Units",
-                    options = unitOptions,
-                    selected = units,
-                    onSelected = { units = it },
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            OutlinedTextField(
-                value = deadline,
-                onValueChange = { deadline = it },
-                label = { Text("Deadline Trigger (Optional)") },
-                placeholder = { Text("e.g. Last day of month") },
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            OutlinedTextField(
-                value = details,
-                onValueChange = { details = it },
-                label = { Text("Details (Optional)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 3
-            )
-
-            Button(
-                onClick = {
-                    onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
-                    onDismiss()
-                },
-                enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank(),
-                modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+            TabRow(
+                selectedTabIndex = currentMode.ordinal,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary
             ) {
-                Text("Add Perk to Google Sheet")
+                Tab(
+                    selected = currentMode == AddMode.Single,
+                    onClick = { currentMode = AddMode.Single },
+                    text = { Text("Single Entry") }
+                )
+                Tab(
+                    selected = currentMode == AddMode.Bulk,
+                    onClick = { currentMode = AddMode.Bulk },
+                    text = { Text("Bulk Import (CSV/TSV)") }
+                )
+            }
+
+            when (currentMode) {
+                AddMode.Single -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                            .verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = title,
+                            onValueChange = { title = it },
+                            label = { Text("Perk Title") },
+                            placeholder = { Text("e.g. Dining Credit") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        EditableDropdownField(
+                            label = "Card Name",
+                            options = availableCards,
+                            value = card,
+                            onValueChange = { card = it },
+                            placeholder = "e.g. Amex Gold",
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            EditableDropdownField(
+                                label = "Interval",
+                                options = intervals,
+                                value = interval,
+                                onValueChange = { interval = it },
+                                placeholder = "e.g. Monthly",
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            EditableDropdownField(
+                                label = "Reset Period",
+                                options = resetPeriods,
+                                value = resetPeriod,
+                                onValueChange = { resetPeriod = it },
+                                placeholder = "e.g. End of month",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedTextField(
+                                value = maxValue,
+                                onValueChange = { maxValue = it },
+                                label = { Text("Max Value / Uses") },
+                                placeholder = { Text("e.g. 10") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            DropdownField(
+                                label = "Units",
+                                options = unitOptions,
+                                selected = units,
+                                onSelected = { units = it },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+
+                        OutlinedTextField(
+                            value = deadline,
+                            onValueChange = { deadline = it },
+                            label = { Text("Deadline Trigger (Optional)") },
+                            placeholder = { Text("e.g. Last day of month") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+
+                        OutlinedTextField(
+                            value = details,
+                            onValueChange = { details = it },
+                            label = { Text("Details (Optional)") },
+                            modifier = Modifier.fillMaxWidth(),
+                            minLines = 3
+                        )
+
+                        Button(
+                            onClick = {
+                                onAddPerk(title, card, interval, maxValue, units, resetPeriod, deadline, details)
+                                onDismiss()
+                            },
+                            enabled = title.isNotBlank() && card.isNotBlank() && maxValue.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth().padding(top = 16.dp)
+                        ) {
+                            Text("Add Perk to Google Sheet")
+                        }
+                    }
+                }
+                AddMode.Bulk -> {
+                    BulkAddPerkContent(
+                        availableCards = availableCards,
+                        drafts = bulkDrafts,
+                        rawText = rawText,
+                        defaultCard = defaultCard,
+                        onRawTextChange = { rawText = it },
+                        onDefaultCardChange = { defaultCard = it },
+                        onParseText = {
+                            val parsed = TableDataParser.parse(rawText, defaultCard)
+                            bulkDrafts = parsed
+                        },
+                        onDraftChange = { index, updated ->
+                            bulkDrafts = bulkDrafts.toMutableList().apply { set(index, updated) }
+                        },
+                        onDeleteDraft = { index ->
+                            bulkDrafts = bulkDrafts.toMutableList().apply { removeAt(index) }
+                        },
+                        onAddBlankDraft = {
+                            bulkDrafts = bulkDrafts + PerkDraft(card = defaultCard)
+                        },
+                        onClearTable = {
+                            bulkDrafts = emptyList()
+                        },
+                        onAddSinglePerk = onAddSinglePerk,
+                        onCompleteBulk = onCompleteBulk
+                    )
+                }
             }
         }
     }
@@ -196,7 +266,9 @@ private fun AddPerkScreenLightPreview() {
         AddPerkScreen(
             availableCards = listOf("Amex Gold", "Chase Sapphire"),
             onDismiss = {},
-            onAddPerk = { _, _, _, _, _, _, _, _ -> }
+            onAddPerk = { _, _, _, _, _, _, _, _ -> },
+            onAddSinglePerk = { Result.success(Unit) },
+            onCompleteBulk = {}
         )
     }
 }
@@ -208,7 +280,9 @@ private fun AddPerkScreenDarkPreview() {
         AddPerkScreen(
             availableCards = listOf("Amex Gold", "Chase Sapphire"),
             onDismiss = {},
-            onAddPerk = { _, _, _, _, _, _, _, _ -> }
+            onAddPerk = { _, _, _, _, _, _, _, _ -> },
+            onAddSinglePerk = { Result.success(Unit) },
+            onCompleteBulk = {}
         )
     }
 }
@@ -224,7 +298,6 @@ private fun EditableDropdownField(
     modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
-    // Only filter if the user is actively typing and the value isn't exactly one of the options
     val filteredOptions = remember(value, options) {
         if (options.contains(value)) options else options.filter { it.contains(value, ignoreCase = true) }
     }
@@ -248,8 +321,6 @@ private fun EditableDropdownField(
             modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryEditable).fillMaxWidth()
         )
         
-        // Always show the full list if the user clicks the arrow, 
-        // or the filtered list if they are typing.
         if (options.isNotEmpty()) {
             ExposedDropdownMenu(
                 expanded = expanded,
