@@ -66,44 +66,55 @@ object TableDataParser {
 
         val dataRows = if (hasHeader) rows.drop(1) else rows
 
-        val titleIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("benefit", "perk", "title", "name", "description"))
-                .takeIf { it >= 0 } ?: 0
-        } else 0
+        val usedIndices = mutableSetOf<Int>()
+
+        fun findAndMark(aliases: Set<String>, defaultIndex: Int): Int {
+            val idx = findHeaderIndex(normalizedHeaders, aliases, usedIndices)
+            return if (idx >= 0) {
+                usedIndices.add(idx)
+                idx
+            } else {
+                defaultIndex
+            }
+        }
 
         val cardIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("card", "cardname", "creditcard"))
+            findHeaderIndex(normalizedHeaders, setOf("card", "cardname", "creditcard"), usedIndices).also {
+                if (it >= 0) usedIndices.add(it)
+            }
         } else -1
 
+        val titleIndex = if (hasHeader) {
+            findAndMark(setOf("benefit", "perk", "title", "name", "description", "perkname", "benefitname"), 0)
+        } else 0
+
         val intervalIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("cadence", "interval", "frequency"))
-                .takeIf { it >= 0 } ?: 1
+            findAndMark(setOf("cadence", "interval", "frequency"), 1)
         } else 1
 
         val resetPeriodIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("resetperiod", "periodwindow", "reset"))
-                .takeIf { it >= 0 } ?: 2
+            findAndMark(setOf("resetperiod", "periodwindow", "reset"), 2)
         } else 2
 
         val maxValueIndex = if (hasHeader) {
-            findHeaderIndex(
-                normalizedHeaders,
-                setOf("maxvalueuses", "maxvalue", "maxuses", "value", "uses", "credit", "maxamount", "amount")
-            ).takeIf { it >= 0 } ?: 3
+            findAndMark(
+                setOf("maxvalueuses", "maxvalue", "maxuses", "value", "uses", "credit", "maxamount", "amount"),
+                3
+            )
         } else 3
 
         val deadlineIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("deadlinetrigger", "deadline", "trigger", "expiration"))
-                .takeIf { it >= 0 } ?: 4
+            findAndMark(setOf("deadlinetrigger", "deadline", "trigger", "expiration"), 4)
         } else 4
 
         val detailsIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("notes", "details", "description", "note"))
-                .takeIf { it >= 0 } ?: 5
+            findAndMark(setOf("notes", "details", "description", "note"), 5)
         } else 5
 
         val unitsIndex = if (hasHeader) {
-            findHeaderIndex(normalizedHeaders, setOf("units", "unit", "currency"))
+            findHeaderIndex(normalizedHeaders, setOf("units", "unit", "currency"), usedIndices).also {
+                if (it >= 0) usedIndices.add(it)
+            }
         } else -1
 
         return dataRows.mapNotNull { row ->

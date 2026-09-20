@@ -16,63 +16,30 @@ internal fun parsePerksFromCsv(csv: String): ParsedCsv {
 
     val rawHeaders = rows.first()
     val header = rawHeaders.map { normalizeHeader(it) }
-    val hasHeader = header.any {
-        it in setOf(
-            "name",
-            "title",
-            "perk",
-            "benefit",
-            "card",
-            "cardname",
-            "interval",
-            "frequency",
-            "cadence",
-            "resetperiod",
-            "maxvalueuses",
-            "deadlinetrigger",
-            "notes",
-            "details"
-        )
-    }
-
+    val knownHeaders = setOf(
+        "name", "title", "perk", "benefit", "card", "cardname",
+        "interval", "frequency", "cadence", "resetperiod", "maxvalueuses",
+        "deadlinetrigger", "notes", "details"
+    )
+    val hasHeader = header.any { it in knownHeaders }
     val dataRows = if (hasHeader) rows.drop(1) else rows
 
-    // For sheets with headers, use header-based matching
-    // For sheets without, use fixed column positions
-    val titleIndex = if (hasHeader) {
-        findHeaderIndex(header, setOf("perk", "benefit", "title", "name", "description"))
-            .takeIf { it >= 0 } ?: 1
-    } else {
-        1
+    val usedIndices = mutableSetOf<Int>()
+    fun findAndMark(aliases: Set<String>, defaultIndex: Int): Int {
+        val idx = findHeaderIndex(header, aliases, usedIndices)
+        return if (idx >= 0) { usedIndices.add(idx); idx } else defaultIndex
     }
-    val cardIndex = if (hasHeader) {
-        findHeaderIndex(header, setOf("card", "cardname")).takeIf { it >= 0 } ?: 0
-    } else {
-        0
-    }
-    val intervalIndex = if (hasHeader) {
-        findHeaderIndex(header, setOf("interval", "frequency", "cadence"))
-            .takeIf { it >= 0 } ?: 2
-    } else {
-        2
-    }
-    val resetPeriodIndex = if (hasHeader) {
-        findHeaderIndex(header, setOf("resetperiod", "periodwindow"))
-            .takeIf { it >= 0 } ?: 3
-    } else {
-        3
-    }
-    val maxValueOrUsesIndex = findHeaderIndex(
-        header,
-        setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit")
-    ).takeIf { it >= 0 } ?: 4
-    val deadlineIndex = findHeaderIndex(header, setOf("deadlinetrigger", "deadline"))
-        .takeIf { it >= 0 } ?: 5
-    val detailsIndex = findHeaderIndex(header, setOf("notes", "details", "description"))
-        .takeIf { it >= 0 } ?: 6
-    val unitsIndex = findHeaderIndex(header, setOf("units", "unit"))
-    val usedIndex = findHeaderIndex(header, setOf("used"))
-    val dateUsedIndex = findHeaderIndex(header, setOf("dateused"))
+
+    val cardIndex = if (hasHeader) findAndMark(setOf("card", "cardname", "creditcard"), 0) else 0
+    val titleIndex = if (hasHeader) findAndMark(setOf("perk", "benefit", "title", "name", "description", "perkname", "benefitname"), 1) else 1
+    val intervalIndex = if (hasHeader) findAndMark(setOf("interval", "frequency", "cadence"), 2) else 2
+    val resetPeriodIndex = if (hasHeader) findAndMark(setOf("resetperiod", "periodwindow"), 3) else 3
+    val maxValueOrUsesIndex = if (hasHeader) findAndMark(setOf("maxvalue", "maxuses", "maxvalueuses", "value", "uses", "credit"), 4) else 4
+    val deadlineIndex = if (hasHeader) findAndMark(setOf("deadlinetrigger", "deadline"), 5) else 5
+    val detailsIndex = if (hasHeader) findAndMark(setOf("notes", "details", "description"), 6) else 6
+    val unitsIndex = if (hasHeader) findHeaderIndex(header, setOf("units", "unit"), usedIndices).also { if (it >= 0) usedIndices.add(it) } else -1
+    val usedIndex = if (hasHeader) findHeaderIndex(header, setOf("used"), usedIndices).also { if (it >= 0) usedIndices.add(it) } else -1
+    val dateUsedIndex = if (hasHeader) findHeaderIndex(header, setOf("dateused"), usedIndices).also { if (it >= 0) usedIndices.add(it) } else -1
 
     val perks = dataRows.mapIndexedNotNull { index, row ->
         val title = row.valueAt(titleIndex).trim()
@@ -170,7 +137,12 @@ internal fun findHeaderIndex(header: List<String>, aliases: Set<String>, exclude
     val exact = header.indices.firstOrNull { i -> i !in excludeIndices && header[i] in aliases }
     if (exact != null) return exact
     return header.indices.firstOrNull { i ->
-        i !in excludeIndices && aliases.any { alias -> alias.length >= 4 && header[i].contains(alias) }
+        if (i in excludeIndices) return@firstOrNull false
+        val h = header[i]
+        aliases.any { alias ->
+            if (alias == "name" && h.contains("card")) false
+            else alias.length >= 4 && h.contains(alias)
+        }
     } ?: -1
 }
 

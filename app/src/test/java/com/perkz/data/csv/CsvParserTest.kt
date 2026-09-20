@@ -92,4 +92,24 @@ class CsvParserTest {
         val idx2 = findHeaderIndex(normalized, setOf("cadence"), excludeIndices = setOf(2))
         assertEquals(3, idx2)
     }
+
+    @Test
+    fun `parses user's exact Google Doc headers`() {
+        val csv = "Card Name,Perk Name,Cadence,Cadence,Max value / uses,Deadline / trigger,Notes,,Used,Remaining,Date Used,Link,Units value\n" +
+            "Amex Gold,Dining credit,Monthly,End of month,100,September 30,Use for dining,,10,,2026-09-15,,USD\n"
+
+        val parsed = parsePerksFromCsv(csv)
+        val perk = parsed.perks.single()
+
+        assertEquals("Amex Gold", perk.card)
+        assertEquals("Dining credit", perk.title)
+        assertEquals("Monthly", perk.interval)
+        assertEquals("End of month", perk.resetPeriod)
+        assertEquals("100", perk.maxValueOrUses)
+        assertEquals("September 30", perk.deadlineTrigger)
+        assertEquals("Use for dining", perk.details)
+        assertEquals(10.0, perk.usedAmountFromSheet)
+        assertEquals(true, perk.usedFromSheet)
+        assertEquals("usd", perk.benefitUnit)
+    }
 }

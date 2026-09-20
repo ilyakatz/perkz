@@ -132,7 +132,7 @@ internal fun PerkRow(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    if (item.perk.card.isNotBlank()) {
+                    if (item.perk.card.isNotBlank() && !item.perk.card.equals(item.perk.title, ignoreCase = true)) {
                         Text(
                             text = item.perk.card,
                             style = MaterialTheme.typography.bodySmall,

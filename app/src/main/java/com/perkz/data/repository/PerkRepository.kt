@@ -203,7 +203,7 @@ class PerkRepository(private val dao: PerkDao) {
             }
         }
 
-        mapField(setOf("card", "cardname"), card)
+        mapField(setOf("card", "cardname", "creditcard"), card)
         mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), title)
         mapField(setOf("interval", "frequency", "cadence"), interval)
         mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), resetPeriod)
@@ -266,7 +266,7 @@ class PerkRepository(private val dao: PerkDao) {
                     }
                 }
 
-                mapField(setOf("card", "cardname"), perk.card)
+                mapField(setOf("card", "cardname", "creditcard"), perk.card)
                 mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), perk.title)
                 mapField(setOf("interval", "frequency", "cadence"), perk.interval)
                 mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), perk.resetPeriod)
@@ -317,7 +317,7 @@ class PerkRepository(private val dao: PerkDao) {
             }
         }
 
-        mapField(setOf("card", "cardname"), draft.card)
+        mapField(setOf("card", "cardname", "creditcard"), draft.card)
         mapField(setOf("perkname", "perk", "benefit", "title", "name", "description"), draft.title)
         mapField(setOf("interval", "frequency", "cadence"), draft.interval)
         mapField(setOf("resetperiod", "periodwindow", "period", "window", "cadence"), draft.resetPeriod)
